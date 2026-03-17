@@ -349,8 +349,8 @@ export const PaymentsView: React.FC<PaymentsViewProps> = ({
                         <td className="table-cell py-4 px-4 align-middle text-zinc-600 font-bold">{sub.companyName}</td>
                         <td className="table-cell py-4 px-4 align-middle text-zinc-600">{sub.subscriberName}</td>
                         <td className="table-cell py-4 px-4 align-middle text-zinc-500 text-xs">{sub.category}</td>
-                        <td className="table-cell py-4 px-4 align-middle text-indigo-600 font-bold">{sub.subscriptionName}</td>
-                        <td className="table-cell py-4 px-4 align-middle text-indigo-900 text-xs font-bold">{sub.subscriptionType || '-'}</td>
+                        <td className="table-cell py-4 px-4 align-middle text-indigo-600 font-bold">{sub.subscriptionType || '-'}</td>
+                        <td className="table-cell py-4 px-4 align-middle text-indigo-900 text-xs font-bold">{sub.subscriptionName}</td>
                         <td className="table-cell py-4 px-4 align-middle font-black text-emerald-600 text-center whitespace-nowrap">₹{sub.price.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
                       </>
                     ) : (
@@ -362,8 +362,8 @@ export const PaymentsView: React.FC<PaymentsViewProps> = ({
                         <td className="table-cell py-4 px-4 align-middle text-zinc-600 font-bold">{sub.companyName}</td>
                         <td className="table-cell py-4 px-4 align-middle text-zinc-600">{sub.subscriberName}</td>
                         <td className="table-cell py-4 px-4 align-middle text-zinc-500 text-xs">{sub.category}</td>
-                        <td className="table-cell py-4 px-4 align-middle text-indigo-900 text-xs font-bold">{sub.subscriptionType || '-'}</td>
-                        <td className="table-cell py-4 px-4 align-middle text-indigo-500 font-bold">{sub.subscriptionName}</td>
+                        <td className="table-cell py-4 px-4 align-middle text-indigo-900 text-xs font-bold">{sub.subscriptionName}</td>
+                        <td className="table-cell py-4 px-4 align-middle text-indigo-500 font-bold">{sub.subscriptionType || '-'}</td>
                         <td className="table-cell py-4 px-4 align-middle font-black text-emerald-600 text-center">₹{sub.price.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
                         <td className="table-cell py-4 px-4 align-middle text-center">
                           <span className="bg-indigo-50 text-indigo-700 px-3 py-1 rounded-lg text-xs font-bold border border-indigo-100 whitespace-nowrap">

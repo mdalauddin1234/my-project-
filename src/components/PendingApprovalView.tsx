@@ -125,6 +125,7 @@ export const PendingApprovalView: React.FC<PendingApprovalViewProps> = ({
                 <th className="table-header py-4 px-4 whitespace-nowrap">Company</th>
                 <th className="table-header py-4 px-4 whitespace-nowrap">Name of the Person</th>
                 <th className="table-header py-4 px-4 whitespace-nowrap">Category of subscription</th>
+                <th className="table-header py-4 px-4 whitespace-nowrap">Name of Subscription</th>
                 <th className="table-header py-4 px-4 whitespace-nowrap">Vendor Name</th>
                 <th className="table-header py-4 px-4 text-center whitespace-nowrap">Price</th>
                 <th className="table-header py-4 px-4 text-center whitespace-nowrap">Planned Date</th>
@@ -186,6 +187,7 @@ export const PendingApprovalView: React.FC<PendingApprovalViewProps> = ({
                     <td className="table-cell py-4 px-4 align-middle text-zinc-600">{sub.companyName}</td>
                     <td className="table-cell py-4 px-4 align-middle text-zinc-600">{sub.subscriberName}</td>
                     <td className="table-cell py-4 px-4 align-middle text-zinc-500 text-xs">{sub.category}</td>
+                    <td className="table-cell py-4 px-4 align-middle text-zinc-600 text-xs font-medium">{sub.subscriptionType || '-'}</td>
                     <td className="table-cell py-4 px-4 align-middle">
                       <span className="text-indigo-600 font-bold">{sub.subscriptionName}</span>
                     </td>
