@@ -1,0 +1,5 @@
+{
+  "name": "SubFlow - Subscription Manager",
+  "description": "A 5-step subscription lifecycle management application including creation, approval, payment, tracking, and renewal.",
+  "requestFramePermissions": []
+}
