@@ -195,7 +195,7 @@ export const PaymentsView: React.FC<PaymentsViewProps> = ({
                 <div className="relative group">
                   <label className="text-[10px] font-black text-white/70 uppercase tracking-wider mb-1 block ml-1">Payment Mode</label>
                   <div className="relative">
-                    <select 
+                    <select
                       value={paymentMode}
                       onChange={(e) => setPaymentMode(e.target.value)}
                       className="w-full bg-white/20 border border-white/30 rounded-xl px-4 py-2.5 text-sm font-bold text-white focus:ring-2 focus:ring-white outline-none appearance-none transition-all cursor-pointer backdrop-blur-sm"
@@ -212,8 +212,8 @@ export const PaymentsView: React.FC<PaymentsViewProps> = ({
 
                 <div className="relative">
                   <label className="text-[10px] font-black text-white/70 uppercase tracking-wider mb-1 block ml-1">Transaction ID</label>
-                  <input 
-                    type="text" 
+                  <input
+                    type="text"
                     placeholder="e.g. TSI-0001"
                     value={transactionId}
                     onChange={(e) => setTransactionId(e.target.value)}
@@ -285,7 +285,7 @@ export const PaymentsView: React.FC<PaymentsViewProps> = ({
                   </>
                 ) : (
                   <>
-                    <th className="table-header py-4 px-4 whitespace-nowrap flex items-center gap-1">Payment Date <ArrowUpDown className="w-3 h-3"/></th>
+                    <th className="table-header py-4 px-4 whitespace-nowrap flex items-center gap-1">Payment Date <ArrowUpDown className="w-3 h-3" /></th>
                     <th className="table-header py-4 px-4 whitespace-nowrap text-center">Subscription No</th>
                     <th className="table-header py-4 px-4 whitespace-nowrap text-center">Renewal No</th>
                     <th className="table-header py-4 px-4 whitespace-nowrap">Company</th>
@@ -296,7 +296,7 @@ export const PaymentsView: React.FC<PaymentsViewProps> = ({
                     <th className="table-header py-4 px-4 whitespace-nowrap text-center">Price</th>
                     <th className="table-header py-4 px-4 whitespace-nowrap text-center">Payment Mode</th>
                     <th className="table-header py-4 px-4 whitespace-nowrap text-center">Transaction ID</th>
-                    <th className="table-header py-4 px-4 whitespace-nowrap text-center flex items-center justify-center gap-1">Start Date <ArrowUpDown className="w-3 h-3"/></th>
+                    <th className="table-header py-4 px-4 whitespace-nowrap text-center flex items-center justify-center gap-1">Start Date <ArrowUpDown className="w-3 h-3" /></th>
                   </>
                 )}
               </tr>
@@ -317,11 +317,10 @@ export const PaymentsView: React.FC<PaymentsViewProps> = ({
                           <div className="flex items-center justify-center gap-3">
                             <button
                               onClick={() => toggleSelection(sub.id)}
-                              className={`p-2 rounded-xl border-2 transition-all active:scale-90 ${
-                                selectedIds.has(sub.id)
+                              className={`p-2 rounded-xl border-2 transition-all active:scale-90 ${selectedIds.has(sub.id)
                                   ? 'bg-indigo-600 border-indigo-600 text-white shadow-lg shadow-indigo-100'
                                   : 'bg-white border-zinc-200 text-zinc-400 hover:border-indigo-400 hover:text-indigo-400'
-                              }`}
+                                }`}
                               title="Select to mark as done"
                             >
                               {selectedIds.has(sub.id) ? <CheckSquare className="w-5 h-5" /> : <Square className="w-5 h-5" />}
