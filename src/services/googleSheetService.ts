@@ -317,7 +317,8 @@ export const addSubscriptionToSheet = async (sub: Subscription) => {
       "Timestamp": ts,
       "Subscription No.": sub.subscriptionNo,
       "Name Of The Person": sub.subscriberName,
-      "Subscription Name": sub.subscriptionName,
+      "Subscription Name": sub.subscriptionName,   // Name of Subscription (dropdown)
+      "Vendor Name": sub.subscriptionType || "",    // Vendor Name (typed text)
       "Types Of Subscriptions": sub.subscriptionType || "",
       "Category Of Subscription": sub.category || "",
       "Purpose Of Subscription": sub.details,
@@ -326,6 +327,9 @@ export const addSubscriptionToSheet = async (sub: Subscription) => {
       "Company Name": sub.companyName,
       // Planned 1 = submission timestamp (date the form was submitted)
       "Planned 1": ts,
+      // Renewal linkage
+      "Renewal No": sub.renewalNo || "",
+      "Parent Subscription No": sub.parentSubscriptionNo || "",
 
       // Also keeping camelCase versions for script compatibility if needed
       timestamp: ts,
@@ -338,6 +342,8 @@ export const addSubscriptionToSheet = async (sub: Subscription) => {
       price: sub.price,
       frequency: sub.frequency,
       companyName: sub.companyName,
+      renewalNo: sub.renewalNo || "",
+      parentSubscriptionNo: sub.parentSubscriptionNo || "",
     };
 
 

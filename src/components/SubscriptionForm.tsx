@@ -76,21 +76,13 @@ export const SubscriptionForm: React.FC<SubscriptionFormProps> = ({ onSubmit, pe
     }
   }, [formData.startDate, formData.frequency]);
 
-  // Effect to set initial subscriptionType when categories or mastersData changes
-  React.useEffect(() => {
-    if (initialData?.subscriptionType) return; // Don't override if we have initial data
-    const currentTypes = getTypesForCategory(formData.category);
-    if (currentTypes.length > 0 && !formData.subscriptionType) {
-      setFormData(prev => ({ ...prev, subscriptionType: currentTypes[0] }));
-    }
-  }, [formData.category, mastersData, initialData?.subscriptionType]);
+  // No auto-fill for subscriptionType (Vendor Name) — user must type it manually
 
   const handleCategoryChange = (cat: string) => {
-    const types = getTypesForCategory(cat);
     setFormData({
       ...formData,
       category: cat,
-      subscriptionType: types[0] || ''
+      subscriptionName: ''
     });
   };
 
@@ -185,8 +177,8 @@ export const SubscriptionForm: React.FC<SubscriptionFormProps> = ({ onSubmit, pe
             required
             disabled={!formData.category}
             className={`w-full bg-zinc-50 border border-indigo-100 rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500 outline-none transition-all appearance-none ${!formData.category ? 'opacity-50 cursor-not-allowed' : ''}`}
-            value={formData.subscriptionType}
-            onChange={e => setFormData({ ...formData, subscriptionType: e.target.value })}
+            value={formData.subscriptionName}
+            onChange={e => setFormData({ ...formData, subscriptionName: e.target.value })}
           >
             <option value="" disabled>— Select Name of Subscription —</option>
             {formData.category && getTypesForCategory(formData.category).map(t => (
@@ -202,9 +194,9 @@ export const SubscriptionForm: React.FC<SubscriptionFormProps> = ({ onSubmit, pe
           required
           type="text"
           className="w-full bg-zinc-50 border border-indigo-100 rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
-          placeholder="e.g. Amazon Prime, Adobe Acrobat, etc."
-          value={formData.subscriptionName}
-          onChange={e => setFormData({ ...formData, subscriptionName: e.target.value })}
+          placeholder="e.g. LIC, Google, Adobe, etc."
+          value={formData.subscriptionType}
+          onChange={e => setFormData({ ...formData, subscriptionType: e.target.value })}
         />
       </div>
 

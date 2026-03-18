@@ -196,7 +196,9 @@ export default function App() {
       createdAt: createdAt,
       startDate: effectiveStartDate,
       endDate: calculateEndDate(effectiveStartDate, newSub.frequency),
-      parentSubscriptionNo: renewalSubscription?.subscriptionNo
+      parentSubscriptionNo: renewalSubscription?.subscriptionNo,
+      // Carry over the renewalNo so it displays correctly in all sections
+      renewalNo: renewalSubscription?.renewalNo || newSub.renewalNo || '',
     };
 
     // Optimistically add to UI
@@ -647,15 +649,31 @@ export default function App() {
               userRole={currentUser.role}
               onNavigateToNew={(sub) => {
                 if (sub) {
-                  const subWithRen = { ...sub };
+                  let subWithRen = { ...sub };
+
+                  // Generate REN number if missing
                   if (!subWithRen.renewalNo) {
-                    // Generate REN number immediately if missing
                     const maxRenNo = subscriptions.reduce((max, s) => {
                       const match = s.renewalNo && typeof s.renewalNo === 'string' ? s.renewalNo.match(/REN-(\d+)/) : null;
                       return match ? Math.max(max, parseInt(match[1], 10)) : max;
                     }, 0);
                     subWithRen.renewalNo = `REN-${(maxRenNo + 1).toString().padStart(4, '0')}`;
                   }
+
+                  // Backward-compatibility fix:
+                  // Old subscriptions (before form-binding fix) stored the vendor name in
+                  // subscriptionName and left subscriptionType empty.
+                  // New model: subscriptionName = dropdown selection, subscriptionType = vendor name text.
+                  // So if subscriptionType is empty, move subscriptionName → subscriptionType (vendor name)
+                  // and clear subscriptionName so the user can pick the correct dropdown option.
+                  if (!subWithRen.subscriptionType && subWithRen.subscriptionName) {
+                    subWithRen = {
+                      ...subWithRen,
+                      subscriptionType: subWithRen.subscriptionName, // vendor name
+                      subscriptionName: '',                           // let user re-select from dropdown
+                    };
+                  }
+
                   setRenewalSubscription(subWithRen);
                 }
                 setActiveTab('new');

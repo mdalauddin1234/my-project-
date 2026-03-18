@@ -122,6 +122,7 @@ export const PendingApprovalView: React.FC<PendingApprovalViewProps> = ({
                     Approval No
                   </th>
                 )}
+                <th className="table-header py-4 px-4 text-center whitespace-nowrap">Renewal No</th>
                 <th className="table-header py-4 px-4 whitespace-nowrap">Company</th>
                 <th className="table-header py-4 px-4 whitespace-nowrap">Name of the Person</th>
                 <th className="table-header py-4 px-4 whitespace-nowrap">Category of subscription</th>
@@ -184,12 +185,13 @@ export const PendingApprovalView: React.FC<PendingApprovalViewProps> = ({
                         {sub.approvalNo || '-'}
                       </td>
                     )}
+                    <td className="table-cell py-4 px-4 align-middle font-mono text-xs text-zinc-400 font-medium text-center">{sub.renewalNo || '-'}</td>
                     <td className="table-cell py-4 px-4 align-middle text-zinc-600">{sub.companyName}</td>
                     <td className="table-cell py-4 px-4 align-middle text-zinc-600">{sub.subscriberName}</td>
                     <td className="table-cell py-4 px-4 align-middle text-zinc-500 text-xs">{sub.category}</td>
-                    <td className="table-cell py-4 px-4 align-middle text-zinc-600 text-xs font-medium">{sub.subscriptionType || '-'}</td>
+                    <td className="table-cell py-4 px-4 align-middle text-zinc-600 text-xs font-medium">{sub.subscriptionName || '-'}</td>
                     <td className="table-cell py-4 px-4 align-middle">
-                      <span className="text-indigo-600 font-bold">{sub.subscriptionName}</span>
+                      <span className="text-indigo-600 font-bold">{sub.subscriptionType || '-'}</span>
                     </td>
                     <td className="table-cell py-4 px-4 align-middle font-black text-emerald-600 text-center whitespace-nowrap">₹{sub.price.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
                     <td className="table-cell py-4 px-4 align-middle text-zinc-500 text-[10px] font-medium text-center">
@@ -285,12 +287,16 @@ export const PendingApprovalView: React.FC<PendingApprovalViewProps> = ({
                     <p className="text-sm font-bold text-zinc-700">{selectedSub.subscriberName}</p>
                   </div>
                   <div>
-                    <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1 block">Category of subscription</label>
-                    <p className="text-sm font-bold text-zinc-700">{selectedSub.category}</p>
+                    <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1 block">Category of Subscription</label>
+                    <p className="text-sm font-bold text-zinc-700">{selectedSub.category || '-'}</p>
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1 block">Name of Subscription</label>
+                    <p className="text-sm font-bold text-zinc-700">{selectedSub.subscriptionName || '-'}</p>
                   </div>
                   <div>
                     <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1 block">Vendor Name</label>
-                    <p className="text-sm font-bold text-zinc-700">{selectedSub.subscriptionName}</p>
+                    <p className="text-sm font-bold text-zinc-700">{selectedSub.subscriptionType || '-'}</p>
                   </div>
                   <div className="bg-indigo-50 px-4 py-2 rounded-xl border border-indigo-100/50">
                     <label className="text-[10px] font-bold text-indigo-400 uppercase tracking-wider mb-0.5 block">Price</label>

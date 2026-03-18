@@ -107,6 +107,7 @@ export const MySubscriptionsView: React.FC<MySubscriptionsViewProps> = ({
               <tr className="bg-zinc-50/80">
                 <th className="table-header text-left whitespace-nowrap">Timestamp</th>
                 <th className="table-header text-left whitespace-nowrap">Subscription No</th>
+                <th className="table-header text-left whitespace-nowrap">Renewal No</th>
                 <th className="table-header text-left whitespace-nowrap">Name of the Person</th>
                 <th className="table-header text-left whitespace-nowrap">Company name</th>
                 <th className="table-header text-left whitespace-nowrap">Category of subscription</th>
@@ -155,14 +156,15 @@ export const MySubscriptionsView: React.FC<MySubscriptionsViewProps> = ({
                     })()}
                   </td>
                   <td className="table-cell font-mono text-xs text-indigo-600 font-bold">{sub.subscriptionNo}</td>
+                  <td className="table-cell font-mono text-xs text-zinc-400 font-medium">{sub.renewalNo || '-'}</td>
                   <td className="table-cell text-zinc-600">{sub.subscriberName}</td>
                   <td className="table-cell font-medium text-zinc-700">{sub.companyName}</td>
                   <td className="table-cell text-zinc-600 text-sm">{sub.category}</td>
-                  <td className="table-cell text-zinc-600 text-sm font-medium">{sub.subscriptionType || '-'}</td>
+                  <td className="table-cell text-zinc-600 text-sm font-medium">{sub.subscriptionName || '-'}</td>
                   <td className="table-cell">
                     <div className="flex flex-col">
                       <span className="text-indigo-600 font-bold">
-                        {sub.subscriptionName}
+                        {sub.subscriptionType || '-'}
                       </span>
                       <span className="text-[10px] text-zinc-400 line-clamp-1 max-w-[200px]" title={sub.details}>
                         {sub.details}

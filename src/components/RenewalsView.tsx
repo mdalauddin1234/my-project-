@@ -158,11 +158,11 @@ export const RenewalsView: React.FC<RenewalsViewProps> = ({
                   </div>
                   <div>
                     <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1 block">Name of Subscription</label>
-                    <p className="text-sm font-bold text-indigo-600">{renewModal.sub.subscriptionType || '-'}</p>
+                    <p className="text-sm font-bold text-indigo-600">{renewModal.sub.subscriptionName || '-'}</p>
                   </div>
                   <div>
                     <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1 block">Vendor Name</label>
-                    <p className="text-sm font-bold text-zinc-700">{renewModal.sub.subscriptionName}</p>
+                    <p className="text-sm font-bold text-zinc-700">{renewModal.sub.subscriptionType || '-'}</p>
                   </div>
                   <div>
                     <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1 block">Price</label>
@@ -395,6 +395,7 @@ export const RenewalsView: React.FC<RenewalsViewProps> = ({
                     <th className="table-header whitespace-nowrap">Timestamp</th>
                     <th className="table-header whitespace-nowrap text-center">Status</th>
                     <th className="table-header text-center whitespace-nowrap">Subscription No</th>
+                    <th className="table-header text-center whitespace-nowrap">Renewal No</th>
                     <th className="table-header whitespace-nowrap">Company</th>
                     <th className="table-header whitespace-nowrap">Name of the Person</th>
                     <th className="table-header whitespace-nowrap">Category of Subscription</th>
@@ -478,6 +479,7 @@ export const RenewalsView: React.FC<RenewalsViewProps> = ({
                           })()}
                         </td>
                         <td className="table-cell py-4 px-4 align-middle font-mono text-xs text-zinc-500 text-center">{sub.subscriptionNo}</td>
+                        <td className="table-cell py-4 px-4 align-middle font-mono text-xs text-zinc-400 font-medium text-center">{sub.renewalNo || '-'}</td>
                         <td className="table-cell py-4 px-4 align-middle text-zinc-600">{sub.companyName}</td>
                         <td className="table-cell py-4 px-4 align-middle text-zinc-600">{sub.subscriberName}</td>
                         <td className="table-cell py-4 px-4 align-middle text-zinc-500 text-xs">{sub.category}</td>
