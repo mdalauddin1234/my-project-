@@ -200,7 +200,15 @@ export const fetchFromSheet = async (mastersData?: { companies: string[], person
             // 2. Try by column index backup (Reliable if headers are missing/unclear)
             const backupKey = `raw_col_${colIndex}`;
             if (item[backupKey] !== undefined && item[backupKey] !== "" && item[backupKey] !== null) {
-              return item[backupKey];
+              const val = item[backupKey];
+              // Robust check: don't pick up ISO strings for non-date fields
+              const isIsoDate = typeof val === 'string' && val.length > 20 && val.includes('T') && val.includes('Z');
+              const isDateSearching = keys.some(k => k.includes('date') || k.includes('planned') || k.includes('actual') || k.includes('timestamp') || k.includes('time'));
+              if (isIsoDate && !isDateSearching) {
+                // Skip fallback index if it contains an ISO date but we are looking for a name/text field
+              } else {
+                return val;
+              }
             }
 
             return fallback;
@@ -270,9 +278,9 @@ export const fetchFromSheet = async (mastersData?: { companies: string[], person
             rowIndex: index,
             subscriptionNo: String(rawSubNo),
             companyName: String(getVal(["companyname", "company"], 3, "Unknown")),
-            subscriberName: String(getVal(["subscribername", "person", "nameoftheperson"], 2, "Unknown")),
+            subscriberName: String(getVal(["subscribername", "person", "nameoftheperson", "nameoftheperson1"], 2, "Unknown")),
             category: rawCategory,
-            subscriptionType: String(getVal(["typesofsubscriptions", "subscriptiontype"], 15, "")),
+            subscriptionType: String(getVal(["vendorname", "vendor", "nameofthesubscriptionvendor", "typesofsubscriptions", "subscriptiontype"], 16, "")),
             subscriptionName: rawSubName,
             details: String(getVal(["details", "purpose", "purposeofsubscription", "remarkofpurpose"], 4, "")),
             price: parseFloat(getVal(["price", "cost", "amount"], 7, "0").toString().replace(/[^0-9.]/g, '')) || 0,
@@ -292,7 +300,7 @@ export const fetchFromSheet = async (mastersData?: { companies: string[], person
             paymentMode: String(getVal(["paymentmode"], 25, "")),
             transactionId: String(getVal(["transactionid"], 26, "")),
             insuranceDoc: String(getVal(["insurancedocument", "insurancedoc"], 27, "")),
-            renewalNo: String(getVal(["renewalno", "renno"], 28, ""))
+            renewalNo: String(getVal(["renewalno", "renewalnumber", "renno"], 32, ""))
           };
         });
     }
@@ -319,11 +327,16 @@ export const addSubscriptionToSheet = async (sub: Subscription) => {
       "Name Of The Person": sub.subscriberName,
       "Subscription Name": sub.subscriptionName,   // Name of Subscription (dropdown)
       "Vendor Name": sub.subscriptionType || "",    // Vendor Name (typed text)
+      "Name of Subscription Vendor": sub.subscriptionType || "",
       "Types Of Subscriptions": sub.subscriptionType || "",
+      "Subscription Type": sub.subscriptionType || "",
       "Category Of Subscription": sub.category || "",
+      "Category of Subscriptions": sub.category || "",
       "Purpose Of Subscription": sub.details,
       "Price": sub.price,
+      "Price ": sub.price,
       "Freq": sub.frequency,
+      "Frequency": sub.frequency,
       "Company Name": sub.companyName,
       // Planned 1 = submission timestamp (date the form was submitted)
       "Planned 1": ts,
@@ -337,6 +350,7 @@ export const addSubscriptionToSheet = async (sub: Subscription) => {
       subscriberName: sub.subscriberName,
       subscriptionName: sub.subscriptionName,
       subscriptionType: sub.subscriptionType || "",
+      vendorName: sub.subscriptionType || "",
       category: sub.category || "",
       details: sub.details,
       price: sub.price,
@@ -385,9 +399,10 @@ export const updateSubscriptionInSheet = async (sub: Subscription) => {
       rowIndex: sub.rowIndex ?? -1,
       rowNumber: sub.rowIndex !== undefined ? sub.rowIndex + 1 : -1,
       subscriptionNo: sub.subscriptionNo,
-      "Subscription No": sub.subscriptionNo,
       "Status": sheetStatus,
       status: sheetStatus,
+      "Renewal No": sub.renewalNo || "",
+      renewalNo: sub.renewalNo || "",
     };
 
     // Logic for Approval Section (Phase 1: Approval For Subscription)
@@ -480,21 +495,19 @@ export const addToRenewalDB = async (sub: Subscription) => {
     action: "ADD",
     subscriptionNo: sub.subscriptionNo,
     "Subscription No.": sub.subscriptionNo,
-    "Subscription No": sub.subscriptionNo,
-    "Name Of The Perosn": sub.subscriberName,
     "Name Of The Person": sub.subscriberName,
+    "Category of Subscriptions": sub.category || "",
     "Subscription Name": sub.subscriptionName,
+    "Vendor Name": sub.subscriptionType || "",
     "Purpose Of Subscription": sub.details,
-    "Price": sub.price,
     "Price ": sub.price,
     "Freq": sub.frequency,
-    "Company Name": sub.companyName,
     "Planned": normalizeDate(sub.startDate) || normalizeDate(new Date()),
     "Step": "",
     "Gmail ID": "",
     "How": GOOGLE_FORM_URL,
-    "Renwal Form": "",
     "Query": "",
+    "Renewal No": sub.renewalNo || "",
   };
 
   try {
@@ -521,6 +534,7 @@ export const addToSubscriptionLogSheet = async (sub: Subscription) => {
     "Timestamp": ts,
     "Subscription No.": sub.subscriptionNo,
     "Subscription No": sub.subscriptionNo,
+    "Category of Subscriptions": sub.category || "",
     "Subscription Name": sub.subscriptionName,
     "Price": sub.price,
     "Frequency": sub.frequency,

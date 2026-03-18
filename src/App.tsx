@@ -465,7 +465,10 @@ export default function App() {
             icon={<PlusSquare className="w-5 h-5" />}
             label="New Subscription/Renewal's"
             active={activeTab === 'new'}
-            onClick={() => setActiveTab('new')}
+            onClick={() => {
+              setRenewalSubscription(null);
+              setActiveTab('new');
+            }}
             isCollapsed={isSidebarCollapsed}
           />
 
@@ -508,7 +511,10 @@ export default function App() {
             label="Renewals"
             count={counts.renewals}
             active={activeTab === 'renewals'}
-            onClick={() => setActiveTab('renewals')}
+            onClick={() => {
+              setRenewalSubscription(null);
+              setActiveTab('renewals');
+            }}
             isCollapsed={isSidebarCollapsed}
           />
 
