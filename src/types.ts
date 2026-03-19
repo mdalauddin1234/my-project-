@@ -60,4 +60,8 @@ export interface Subscription {
   transactionId?: string;
   insuranceDoc?: string;
   renewalNo?: string;
+  step?: string;
+  gmailId?: string;
+  how?: string;
+  query?: string;
 }

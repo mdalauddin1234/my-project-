@@ -56,7 +56,12 @@ export const SubscriptionForm: React.FC<SubscriptionFormProps> = ({ onSubmit, pe
     billingMonth: initialData?.billingMonth || MONTHS[new Date().getMonth()],
     billingYear: initialData?.billingYear?.toString() || new Date().getFullYear().toString(),
     autoRenewal: initialData?.autoRenewal ?? true,
-    nextRenewalDate: initialData?.nextRenewalDate || ''
+    nextRenewalDate: initialData?.nextRenewalDate || '',
+    renewalNo: initialData?.renewalNo || '',
+    step: initialData?.step || '',
+    gmailId: initialData?.gmailId || '',
+    how: initialData?.how || '',
+    query: initialData?.query || ''
   });
 
   // Calculate Next Renewal Date automatically
@@ -242,7 +247,7 @@ export const SubscriptionForm: React.FC<SubscriptionFormProps> = ({ onSubmit, pe
       <button
         type="submit"
         className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 rounded-xl shadow-lg shadow-indigo-100 transition-all active:scale-[0.98] mt-4">
-        Create Subscription
+        {initialData?.subscriptionNo ? 'Create Renewal' : 'Create Subscription'}
       </button>
     </form>
   );

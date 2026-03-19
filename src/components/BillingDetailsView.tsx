@@ -51,7 +51,14 @@ const BillingCard: React.FC<BillingRowProps> = ({ sub, onActivate }) => {
           <span className="font-black text-indigo-900 text-sm tracking-tight">{sub.subscriptionNo}</span>
         </div>
         <h4 className="text-sm font-bold text-zinc-700 line-clamp-1">{sub.subscriptionName}</h4>
-        <p className="text-[10px] text-zinc-400 font-bold uppercase">{sub.companyName}</p>
+        <div className="flex items-center gap-2">
+          <p className="text-[10px] text-zinc-400 font-bold uppercase">{sub.companyName}</p>
+          {sub.renewalNo && (
+            <span className="text-[9px] font-mono text-indigo-400 bg-indigo-50 px-1.5 py-0.5 rounded leading-none">
+              {sub.renewalNo}
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Dates */}

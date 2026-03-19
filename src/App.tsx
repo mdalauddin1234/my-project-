@@ -60,6 +60,7 @@ import {
   deleteSubscriptionFromSheet,
   updateSubscriptionInSheet,
   addToRenewalDB,
+  fetchFromRenewalDB,
   fetchUsersFromSheet,
   addUserToSheet,
   deleteUserFromSheet,
@@ -116,8 +117,34 @@ export default function App() {
       if (syncedMasters !== null) setMastersData(syncedMasters);
 
       // Pass already-fetched masters so fetchFromSheet doesn't call fetchMastersFromSheet again
-      const syncedSubs = await fetchFromSheet(syncedMasters);
-      if (syncedSubs !== null) setSubscriptions(syncedSubs);
+      const [syncedSubs, renewalData] = await Promise.all([
+        fetchFromSheet(syncedMasters),
+        fetchFromRenewalDB()
+      ]);
+
+      if (syncedSubs !== null) {
+        // Merge renewalNo from renewalData based on subscriptionNo
+        const mergedSubs = syncedSubs.map(sub => {
+          if (renewalData && renewalData.length > 0) {
+            const renewal = renewalData.find((r: any) => {
+              const renSubNo = r.subscriptionno || r.subno || r.subscriptionno_;
+              return renSubNo && renSubNo.toString().toUpperCase() === sub.subscriptionNo.toUpperCase();
+            });
+            if (renewal) {
+              return { 
+                ...sub, 
+                renewalNo: String(renewal.renewalno || sub.renewalNo || ''),
+                step: String(renewal.step || sub.step || ''),
+                gmailId: String(renewal.gmailid || sub.gmailId || ''),
+                how: String(renewal.how || sub.how || ''),
+                query: String(renewal.query || sub.query || ''),
+              };
+            }
+          }
+          return sub;
+        });
+        setSubscriptions(mergedSubs);
+      }
 
       if (syncedUsers !== null) {
         const mappedUsers: User[] = syncedUsers.map((u, i) => {

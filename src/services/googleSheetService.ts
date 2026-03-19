@@ -286,8 +286,8 @@ export const fetchFromSheet = async (mastersData?: { companies: string[], person
             price: parseFloat(getVal(["price", "cost", "amount"], 7, "0").toString().replace(/[^0-9.]/g, '')) || 0,
             frequency: getVal(["frequency", "freq"], 6, Frequency.MONTHLY) as Frequency,
             status,
-            startDate: normalizeDate(getValWithStatus(["startdate", "planned"], 8, "")),
-            endDate: normalizeDate(getValWithStatus(["enddate", "actual"], 9, "")),
+            startDate: normalizeDate(getValWithStatus(["planned1", "planned", "startdate"], 10, "")),
+            endDate: normalizeDate(getValWithStatus(["enddate", "expirydate", "actual"], 19, "")),
             approvedOn: normalizeDate(item["approval_actual"] || item["approval_approvedon"] || ""),
             timeDelay: getValWithStatus(["timedelay", "delay"], 15, ""),
             photoUrl: String(getValWithStatus(["photourl", "photo"], 11, "")),
@@ -521,6 +521,32 @@ export const addToRenewalDB = async (sub: Subscription) => {
   } catch (err) {
     console.error("❌ Renewal DB write failed:", err);
     return false;
+  }
+};
+
+export const fetchFromRenewalDB = async (): Promise<any[] | null> => {
+  try {
+    const response = await fetch(`${SCRIPT_URL}?sheetName=Renewal+DB`);
+    if (!response.ok) return null;
+    const data = await response.json();
+
+    if (Array.isArray(data) && data.length > 0) {
+      const rawHeaders = data[0];
+      const headers = rawHeaders.map((h: any) => h.toString().toLowerCase().trim().replace(/[^a-z0-9]/g, ''));
+
+      return data.slice(1).map((row: any[]) => {
+        const obj: any = {};
+        row.forEach((val, i) => {
+          const key = headers[i] || `col${i}`;
+          obj[key] = val;
+        });
+        return obj;
+      });
+    }
+    return [];
+  } catch (error) {
+    console.error("Error fetching from Renewal DB:", error);
+    return null;
   }
 };
 

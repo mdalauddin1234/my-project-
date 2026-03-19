@@ -178,6 +178,14 @@ export const RenewalsView: React.FC<RenewalsViewProps> = ({
                       {new Date(renewModal.sub.endDate!).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
                     </p>
                   </div>
+                  <div>
+                    <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1 block">Gmail ID</label>
+                    <p className="text-sm font-bold text-zinc-700">{renewModal.sub.gmailId || '-'}</p>
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1 block">How</label>
+                    <p className="text-sm font-bold text-zinc-700">{renewModal.sub.how || '-'}</p>
+                  </div>
                 </div>
 
                 <div className="space-y-3 pt-4 border-t border-indigo-50">
@@ -514,7 +522,7 @@ export const RenewalsView: React.FC<RenewalsViewProps> = ({
                         <td className="table-cell py-4 px-4 align-middle text-zinc-600 font-medium">
                           {sub.endDate ? new Date(sub.endDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '-'}
                         </td>
-                        <td className="table-cell py-4 px-4 align-middle font-black text-indigo-600 font-mono text-xs italic">{sub.renewalNo || 'REN-' + (idx + 1001)}</td>
+                        <td className="table-cell py-4 px-4 align-middle font-black text-indigo-600 font-mono text-xs italic">{sub.renewalNo || '-'}</td>
                         <td className="table-cell py-4 px-4 align-middle font-mono text-zinc-400 font-bold text-xs">{sub.subscriptionNo}</td>
                         <td className="table-cell py-4 px-4 align-middle text-zinc-600 font-bold">{sub.companyName}</td>
                         <td className="table-cell py-4 px-4 align-middle text-zinc-600">{sub.subscriberName}</td>
