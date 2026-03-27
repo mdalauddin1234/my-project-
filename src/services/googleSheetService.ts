@@ -1,15 +1,53 @@
 import { Subscription, SubscriptionStatus, Frequency } from '../types';
 
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwd7gEcAih5XsFBHmd55rBg0ZHvSUfrwOzESLBkVAk8VcBtsxmFMwMfBWgvlrc6xhdd9A/exec";
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbybObf5oRJdSyQ2Ghkre9OM0oTR0kxnrrU1dA2EKuJ4hBzzfc8XM-rlPGflu9nXQ__76Q/exec";
 
-// Normalize any date string into consistent "M/D/YYYY H:MM:SS" format matching the Google Sheet
-// e.g. "3/6/2026 16:27:37"
+// Internal date normalization - always returns unambiguous ISO string
 const normalizeDate = (val: any): string => {
   if (!val) return '';
+  
+  // If already a Date object
+  if (val instanceof Date) {
+    return isNaN(val.getTime()) ? '' : val.toISOString();
+  }
+
   const s = val.toString().trim();
   if (!s || s === 'Pending' || s === 'Not yet decided' || s === 'Invalid Date') return '';
-  const d = new Date(s);
-  if (isNaN(d.getTime())) return ''; // Return empty string for invalid dates
+  
+  // Try standard parsing
+  let d = new Date(s);
+  
+  // If invalid, try DD/MM/YYYY HH:MM:SS parsing (common in India/UK)
+  if (isNaN(d.getTime())) {
+    const dmyMatch = s.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})/);
+    if (dmyMatch) {
+      const day = parseInt(dmyMatch[1]);
+      const month = parseInt(dmyMatch[2]) - 1;
+      const year = parseInt(dmyMatch[3]);
+      
+      // Look for time info
+      const timeMatch = s.match(/(\d{1,2}):(\d{1,2}):?(\d{1,2})?(\s*[AP]M)?/i);
+      let h = 0, m = 0, sec = 0;
+      if (timeMatch) {
+        h = parseInt(timeMatch[1]);
+        m = parseInt(timeMatch[2]);
+        sec = timeMatch[3] ? parseInt(timeMatch[3]) : 0;
+        if (timeMatch[4] && timeMatch[4].trim().toUpperCase() === 'PM' && h < 12) h += 12;
+        if (timeMatch[4] && timeMatch[4].trim().toUpperCase() === 'AM' && h === 12) h = 0;
+      }
+      d = new Date(year, month, day, h, m, sec);
+    }
+  }
+
+  return isNaN(d.getTime()) ? '' : d.toISOString();
+};
+
+// Formatting for Google Sheets - returns local "M/D/YYYY H:MM:SS"
+const formatForSheet = (val: any): string => {
+  if (!val) return '';
+  const d = new Date(val);
+  if (isNaN(d.getTime())) return '';
+  
   const M = d.getMonth() + 1;
   const D = d.getDate();
   const Y = d.getFullYear();
@@ -19,7 +57,7 @@ const normalizeDate = (val: any): string => {
   return `${M}/${D}/${Y} ${h}:${m}:${sec}`;
 };
 
-const GOOGLE_FORM_URL = 'https://docs.google.com/forms/d/e/1FAIpQLSeEVCLUwAoMXXSmC0rWUDnKSZuQs3LmF-Ki_6fgOZ2wFifYcg/viewform?usp=sf_link';
+const GOOGLE_FORM_URL = 'https://script.google.com/macros/s/AKfycbyQ7VU8dVOWw29JUdtN0Wq-MAOqkCDVNQlatRNmZEl7fY1xZxkNKbyqi5ER7Xy2sfOJlA/exec';
 
 // Calculate delay in days between planned and actual dates
 const calculateDelayDays = (planned: any, actual: any): string => {
@@ -79,9 +117,9 @@ export const fetchFromSheet = async (mastersData?: { companies: string[], person
     }
 
     let rows: any[] = [];
+    let headerRowIndex = -1;
     if (Array.isArray(data)) {
       // Find the header row (the one that contains "Subscription No" or "Timestamp" or "Subscriber")
-      let headerRowIndex = -1;
       for (let i = 0; i < data.length; i++) {
         const row = data[i];
         if (Array.isArray(row) && row.some(cell => {
@@ -122,9 +160,10 @@ export const fetchFromSheet = async (mastersData?: { companies: string[], person
             }
           }
 
-          if (group.includes("approval")) return `approval_${cleanH}`;
-          if (group.includes("payment")) return `payment_${cleanH}`;
-          if (group.includes("renewal")) return `renewal_${cleanH}`;
+          if (group.includes("approval")) return `approval${cleanH}`;
+          if (group.includes("payment")) return `payment${cleanH}`;
+          if (group.includes("renewal")) return `renewal${cleanH}`;
+          if (group.includes("audit")) return `audit${cleanH}`;
           return cleanH;
         });
 
@@ -136,6 +175,7 @@ export const fetchFromSheet = async (mastersData?: { companies: string[], person
               obj[header] = val;
               obj[`raw_col_${i}`] = val; // Backup mapping
             });
+            obj.originalRowIndex = rowIndex + (headerRowIndex + 1);
           }
           return obj;
         });
@@ -158,7 +198,20 @@ export const fetchFromSheet = async (mastersData?: { companies: string[], person
     }
 
     if (rows.length > 0) {
-      return rows
+      // 1. Deduplicate by Subscription No (Keep only the LATEST row for each sub)
+      const uniqueRowsMap = new Map();
+      rows.forEach((row: any) => {
+        const subNoText = String(row["subscriptionno"] || row["subno"] || row["subscription_no"] || row["raw_col_2"] || row["raw_col_1"] || "").trim().toUpperCase();
+        if (subNoText && subNoText.startsWith("SUB-")) {
+          // Overwrites older rows with newer ones because we are iterating in order
+          uniqueRowsMap.set(subNoText, row);
+        } else {
+          uniqueRowsMap.set(`extra-${Math.random()}`, row);
+        }
+      });
+      const uniqueRows = Array.from(uniqueRowsMap.values());
+
+      return uniqueRows
         .filter((item: any) => {
           // Must have at least some non-empty values
           const hasData = Object.values(item).some(val => val !== "" && val !== null && val !== undefined);
@@ -182,18 +235,36 @@ export const fetchFromSheet = async (mastersData?: { companies: string[], person
             // 1. Try by cleaned header names (Most flexible)
             for (const searchKey of keys) {
               const target = clean(searchKey);
-              // Exact match first
-              let foundKey = itemKeys.find(k => clean(k) === target);
+              
+              const possibleKeys = [
+                target,
+                `renewal${target}`,
+                `approval${target}`,
+                `payment${target}`,
+                `audit${target}`
+              ];
 
-              // If not found, try a very cautious inclusion (only for longer keys)
-              if (!foundKey && target.length > 8) {
-                foundKey = itemKeys.find(k => clean(k).includes(target));
-              }
+              for (const pKey of possibleKeys) {
+                // Find a key that, when cleaned, matches pKey OR target
+                const foundKey = itemKeys.find(k => {
+                  const ck = clean(k);
+                  return ck === pKey || ck === target;
+                });
 
-              if (foundKey && item[foundKey] !== "" && item[foundKey] !== null && item[foundKey] !== undefined) {
-                // Special check: if we are looking for Category, but found a header containing 'type', skip it
-                if (target.includes('category') && clean(foundKey).includes('type')) continue;
-                return item[foundKey];
+                if (foundKey && item[foundKey] !== "" && item[foundKey] !== null && item[foundKey] !== undefined) {
+                  // Special check: avoid picking up IDs when looking for counts and vice versa
+                  const val = String(item[foundKey]);
+                  const isLookingForId = target.includes('id') || target.includes('renid');
+                  const isLookingForCount = target.includes('count') || target.includes('no') || target.includes('renno');
+                  
+                  // If we found a number but we are looking for an ID (like REN-XXXX), be cautious
+                  if (isLookingForId && !isNaN(Number(val)) && val.length < 5) {
+                    // This might be a count, keep looking for a string ID
+                    continue; 
+                  }
+                  
+                  return item[foundKey];
+                }
               }
             }
 
@@ -215,92 +286,119 @@ export const fetchFromSheet = async (mastersData?: { companies: string[], person
           };
 
           // Mapping based on current sheet layout (A:0 based):
-          // A(0):Timestamp, B(1):SubNo, C(2):Name of Person, D(3):Company, E(4):Purpose, F(5):SubName, G(6):Freq, H(7):Price, I(8):Planned, J(9):Actual, K(10):Status, L(11):Photo
+          // A(0):Timestamp, B(1):SubNo, C(2):Name of Person, D(3):Company, E(4):SubCategory, F(5):SubName, G(6):Freq, H(7):Price, I(8):Planned1, J(9):Actual1, K(10):Status, L(11):Photo
+          // Wait! Screenshot shows: K:Planned1, L:Actual1, M:Status, N:Planned2, O:Actual2
+          // Based on screenshot mapping (2026 Layout):
+          // K(10):Planned 1, L(11):Actual 1, M(12):Status, N(13):Planned 2, O(14):Actual 2
 
-          let rawCreatedAt = getVal(["timestamp", "time"], 0, new Date().toISOString());
-          let rawSubNo = getVal(["subscriptionno", "subno", "no"], 1, `SUB-${(index + 1).toString().padStart(4, '0')}`);
-
-          if (rawCreatedAt && rawCreatedAt.toString().startsWith("SUB-")) {
-            const temp = rawCreatedAt;
-            rawCreatedAt = rawSubNo;
-            rawSubNo = temp;
-          }
-
-          const rawStatus = getVal(["status", "approval", "approvalforsubscriptionstatus"], 10, SubscriptionStatus.PENDING_APPROVAL);
+          const rawStatusText = getVal(["status", "approvalstatus", "approval", "approvalforsubscriptionstatus", "currentstatus"], 14, "").toString();
+          const cleanStatus = rawStatusText.toUpperCase().replace(/[^A-Z]/g, '');
+          
           let status = SubscriptionStatus.PENDING_APPROVAL;
-          const cleanStatus = rawStatus.toString().toUpperCase().replace(/[^A-Z]/g, '');
+          
+          if (cleanStatus.includes('REJECTED')) {
+            status = SubscriptionStatus.REJECTED;
+          } else if (cleanStatus.includes('EXPIRED')) {
+            status = SubscriptionStatus.EXPIRED;
+          } else if (cleanStatus.includes('CANCELLED') || cleanStatus.includes('CANCELED')) {
+            status = SubscriptionStatus.CANCELLED;
+          } else {
+            // Process-driven status (Fallback if status text is generic like "Active" or "Approved")
+            const actual1Val = getVal(["actual1", "approvedon", "approval_actual1"], -1, ""); 
+            const actual2Val = getVal(["actual2", "paidon", "payment_actual2"], -1, "");
+            const photoVal = getVal(["photourl", "photo", "billimage", "bill_image"], -1, "");
+            const stageVal = String(getVal(["stage", "step", "auditstage", "current_stage", "audit_step"], 0, "")).toUpperCase();
 
-          if (cleanStatus.includes('ACTIVE')) status = SubscriptionStatus.ACTIVE;
-          else if (cleanStatus.includes('PAYMENT') || cleanStatus.includes('APPROVED')) status = SubscriptionStatus.PENDING_PAYMENT;
-          else if (cleanStatus.includes('PAID')) status = SubscriptionStatus.PAID;
-          else if (cleanStatus.includes('REJECTED')) status = SubscriptionStatus.REJECTED;
-          else if (cleanStatus.includes('EXPIRED')) status = SubscriptionStatus.EXPIRED;
-          else if (cleanStatus.includes('CANCELLED') || cleanStatus.includes('CANCELED')) status = SubscriptionStatus.CANCELLED;
-          else if (cleanStatus === 'PENDING') status = SubscriptionStatus.PENDING_APPROVAL;
+            // 1. Audit / Active Detection (Final Stages)
+            if (cleanStatus.includes('ACTIVE') || cleanStatus.includes('DONE') || (stageVal && stageVal !== "" && stageVal !== "-")) {
+              status = SubscriptionStatus.ACTIVE;
+            } 
+            // 2. Billing / Paid Detection
+            else if (cleanStatus.includes('PAID') || cleanStatus.includes('BILLING') || photoVal || actual2Val) {
+              status = SubscriptionStatus.PAID;
+            } 
+            // 3. Approved / Payment Detection
+            else if (cleanStatus.includes('APPROVED') || cleanStatus.includes('PENDINGPAYMENT') || actual1Val) {
+              status = SubscriptionStatus.PENDING_PAYMENT;
+            }
+            // 4. Default: Pending Approval
+            else {
+              status = SubscriptionStatus.PENDING_APPROVAL;
+            }
+          }
 
           const getValWithStatus = (keys: string[], colIndex: number, fallback: any = "") => {
             const clean = (s: any) => s ? s.toString().toLowerCase().replace(/[^a-z0-9]/g, '') : '';
             const itemKeys = Object.keys(item);
 
-            let prefix = "approval_";
-            if (status === SubscriptionStatus.PENDING_PAYMENT) prefix = "payment_";
-            if (status === SubscriptionStatus.ACTIVE || status === SubscriptionStatus.PAID) prefix = "renewal_";
+            let prefix = "approval";
+            if (status === SubscriptionStatus.PENDING_PAYMENT) prefix = "payment";
+            if (status === SubscriptionStatus.ACTIVE || status === SubscriptionStatus.PAID || status === SubscriptionStatus.EXPIRED) prefix = "renewal";
 
             for (const searchKey of keys) {
               const target = clean(searchKey);
+              
+              // 1. Try with prefix (approvalplanned, etc.)
               const prefKey = `${prefix}${target}`;
-              if (item[prefKey] !== undefined && item[prefKey] !== "" && item[prefKey] !== null) {
-                return item[prefKey];
-              }
-              const foundKey = itemKeys.find(k => clean(k) === target);
-              if (foundKey && item[foundKey] !== "" && item[foundKey] !== null) {
-                return item[foundKey];
-              }
-            }
+              if (item[prefKey] !== undefined && item[prefKey] !== "" && item[prefKey] !== null) return item[prefKey];
 
+              // 2. Try clean match (planneddate)
+              const foundKey = itemKeys.find(k => clean(k) === target);
+              if (foundKey && item[foundKey] !== "" && item[foundKey] !== null) return item[foundKey];
+            }
+            
+            // 3. Last Fallback: Column Index
             const backupKey = `raw_col_${colIndex}`;
-            if (item[backupKey] !== undefined && item[backupKey] !== "" && item[backupKey] !== null) {
+            if (colIndex !== -1 && item[backupKey] !== undefined && item[backupKey] !== "" && item[backupKey] !== null) {
               return item[backupKey];
             }
             return fallback;
           };
 
-          const rawSubName = String(getVal(["nameofsubscription", "subscriptionname", "subname"], 5, "Unknown"));
+          const rawSubName = String(getVal(["nameofsubscription", "subscriptionname", "subname"], 8, "Unknown"));
           
           // Category logic: lookup from masters or fallback to purpose
           let rawCategory = subNameToCategoryMap[rawSubName.toLowerCase().trim()];
           if (!rawCategory) {
-            rawCategory = String(getVal(["categoryofsubscription", "categoryofsubscriptions", "purpose", "details"], 4, "Other"));
+            rawCategory = String(getVal(["categoryofsubscription", "categoryofsubscriptions", "purpose", "details"], 7, "Other"));
           }
+
+          const rawSubNo = getVal(["subscriptionno", "subno", "no"], 2, "");
+          const rawCreatedAt = getVal(["timestamp", "createdat", "createdon", "date"], 1, "");
 
           return {
             id: item.id || `sheet-${index}`,
-            rowIndex: index,
+            rowIndex: item.originalRowIndex ?? index,
             subscriptionNo: String(rawSubNo),
-            companyName: String(getVal(["companyname", "company"], 3, "Unknown")),
-            subscriberName: String(getVal(["subscribername", "person", "nameoftheperson", "nameoftheperson1"], 2, "Unknown")),
+            companyName: String(getVal(["companyname", "company"], 6, "Unknown")),
+            subscriberName: String(getVal(["subscribername", "person", "nameoftheperson", "nameoftheperson1"], 5, "Unknown")),
             category: rawCategory,
-            subscriptionType: String(getVal(["vendorname", "vendor", "nameofthesubscriptionvendor", "typesofsubscriptions", "subscriptiontype"], 16, "")),
+            subscriptionType: String(getVal(["vendorname", "vendor", "nameofthesubscriptionvendor", "typesofsubscriptions", "subscriptiontype"], 9, "")),
             subscriptionName: rawSubName,
-            details: String(getVal(["details", "purpose", "purposeofsubscription", "remarkofpurpose"], 4, "")),
-            price: parseFloat(getVal(["price", "cost", "amount"], 7, "0").toString().replace(/[^0-9.]/g, '')) || 0,
-            frequency: getVal(["frequency", "freq"], 6, Frequency.MONTHLY) as Frequency,
+            details: String(getVal(["details", "purpose", "purposeofsubscription", "remarkofpurpose"], 31, "")),
+            price: parseFloat(getVal(["price", "cost", "amount"], 10, "0").toString().replace(/[^0-9.]/g, '')) || 0,
+            frequency: getVal(["frequency", "freq"], 11, Frequency.MONTHLY) as Frequency,
             status,
-            startDate: normalizeDate(getValWithStatus(["planned1", "planned", "startdate"], 10, "")),
-            endDate: normalizeDate(getValWithStatus(["enddate", "expirydate", "actual"], 19, "")),
-            approvedOn: normalizeDate(item["approval_actual"] || item["approval_approvedon"] || ""),
-            timeDelay: getValWithStatus(["timedelay", "delay"], 15, ""),
-            photoUrl: String(getValWithStatus(["photourl", "photo"], 11, "")),
+            startDate: normalizeDate(getValWithStatus(["planned1", "planned", "planneddate", "startdate"], 12, "")),
+            endDate: normalizeDate(getValWithStatus(["enddate", "expirydate", "actual"], 13, "")),
+            photoUrl: String(getVal(["photourl", "photo"], 100, "")),
             createdAt: normalizeDate(rawCreatedAt),
             billingMonth: String(getVal(["billingmonth"], 20, "")),
             billingYear: parseInt(getVal(["billingyear"], 21, "0")) || undefined,
             nextRenewalDate: normalizeDate(getVal(["nextrenewaldate"], 22, "")),
             autoRenewal: getVal(["autorenewal"], 23, "").toString().toLowerCase() === 'yes',
-            approvalNo: String(getVal(["approvalno", "appno"], 24, "")),
+            approvalNo: String(getVal(["approvalno", "appno", "approval_no", "app_no"], 34, "")),
             paymentMode: String(getVal(["paymentmode"], 25, "")),
             transactionId: String(getVal(["transactionid"], 26, "")),
             insuranceDoc: String(getVal(["insurancedocument", "insurancedoc"], 27, "")),
-            renewalNo: String(getVal(["renewalno", "renewalnumber", "renno"], 32, ""))
+            renewalNo: String(getVal(["renewalid", "renewal_id", "ren_id", "renid", "currentrenewal"], -1, "")),
+            renewalCount: parseInt(getVal(["renewalno", "renewal_no", "ren_no", "renewalcount", "renewal_count", "renno", "count"], -1, "0")) || 0,
+            planned1: normalizeDate(getVal(["approval_planned1", "planned1", "plannedone", "planned"], 12, "")),
+            planned2: normalizeDate(getVal(["payment_planned2", "planned2", "plannedtwo"], 12, "")),
+            planned3: normalizeDate(getVal(["renewal_planned3", "planned3", "plannedthree"], 12, "")),
+            actual1: normalizeDate(getVal(["actual1", "approvedon"], 11, "")),
+            actual2: normalizeDate(getVal(["payment_actual2", "actual2", "actualtwo"], 14, "")),
+            step: String(getVal(["stage", "step", "auditstage", "audit_stage", "audit_step"], 0, ""))
           };
         });
     }
@@ -317,32 +415,25 @@ export const fetchFromSheet = async (mastersData?: { companies: string[], person
 
 export const addSubscriptionToSheet = async (sub: Subscription) => {
   try {
-    const ts = normalizeDate(new Date());
-    const payload = {
+    const ts = formatForSheet(new Date());
+    const payload: any = {
       sheetName: "FMS",
       action: "ADD",
-      // Primary mapping based on specific header names requested
+      "STAGE": sub.step || "Audit",
       "Timestamp": ts,
-      "Subscription No.": sub.subscriptionNo,
+      "Subscription No": sub.subscriptionNo,
+      "Renewal ID": sub.renewalNo || "-",
+      "Renewal No": sub.renewalCount || 0,
       "Name Of The Person": sub.subscriberName,
-      "Subscription Name": sub.subscriptionName,   // Name of Subscription (dropdown)
-      "Vendor Name": sub.subscriptionType || "",    // Vendor Name (typed text)
-      "Name of Subscription Vendor": sub.subscriptionType || "",
-      "Types Of Subscriptions": sub.subscriptionType || "",
-      "Subscription Type": sub.subscriptionType || "",
-      "Category Of Subscription": sub.category || "",
-      "Category of Subscriptions": sub.category || "",
-      "Purpose Of Subscription": sub.details,
-      "Price": sub.price,
+      "Company name": sub.companyName,
+      "Category of Subscriptions": sub.category,
+      "Subscription Name": sub.subscriptionName,
+      "Vendor Name": sub.subscriptionType || "",
       "Price ": sub.price,
+      "Price": sub.price,
       "Freq": sub.frequency,
-      "Frequency": sub.frequency,
-      "Company Name": sub.companyName,
-      // Planned 1 = submission timestamp (date the form was submitted)
-      "Planned 1": ts,
-      // Renewal linkage
-      "Renewal No": sub.renewalNo || "",
-      "Parent Subscription No": sub.parentSubscriptionNo || "",
+      "End Date": formatForSheet(sub.endDate) || "",
+      "Status": "Pending",
 
       // Also keeping camelCase versions for script compatibility if needed
       timestamp: ts,
@@ -356,10 +447,19 @@ export const addSubscriptionToSheet = async (sub: Subscription) => {
       price: sub.price,
       frequency: sub.frequency,
       companyName: sub.companyName,
-      renewalNo: sub.renewalNo || "",
+      renewalId: sub.renewalNo || "",
+      renewalNo: sub.renewalNo || "", // Legacy support
+      renewalCount: sub.renewalCount || 0,
       parentSubscriptionNo: sub.parentSubscriptionNo || "",
     };
 
+    // CRITICAL: Ensure we NEVER touch columns K(Planned 1), N(Planned 2), Q(Planned 3)
+    // ANY key containing "Planned" will be stripped to protect ARRAYFORMULAs.
+    Object.keys(payload).forEach(key => {
+      if (key.toLowerCase().includes("planned")) {
+        delete payload[key];
+      }
+    });
 
     await fetch(SCRIPT_URL, {
       method: "POST",
@@ -398,23 +498,31 @@ export const updateSubscriptionInSheet = async (sub: Subscription) => {
       action: "UPDATE",
       rowIndex: sub.rowIndex ?? -1,
       rowNumber: sub.rowIndex !== undefined ? sub.rowIndex + 1 : -1,
-      subscriptionNo: sub.subscriptionNo,
+      "Subscription No": sub.subscriptionNo,
       "Status": sheetStatus,
-      status: sheetStatus,
-      "Renewal No": sub.renewalNo || "",
-      renewalNo: sub.renewalNo || "",
+      "Status ": sheetStatus,
+      "STAGE": sub.step || "Audit",
+      "Stage": sub.step || "Audit",
+      "Renewal ID": sub.renewalNo || "",
+      "Renewal No": sub.renewalCount || 0,
     };
+
+    // CRITICAL: Ensure we NEVER touch columns K(Planned 1), N(Planned 2), Q(Planned 3)
+    // in the UPDATE payload as they contain formulas. ANY key containing "Planned" will be stripped.
+    Object.keys(payload).forEach(key => {
+      if (key.toLowerCase().includes("planned")) {
+        delete payload[key];
+      }
+    });
 
     // Logic for Approval Section (Phase 1: Approval For Subscription)
     if (sub.status === SubscriptionStatus.PENDING_APPROVAL || 
         sub.status === SubscriptionStatus.PENDING_PAYMENT || 
         sub.status === SubscriptionStatus.REJECTED) {
       
-      // Planned 1 = submission timestamp (already written on ADD, but keep for UPDATE too)
-      // Do NOT overwrite Planned 1 on approval — leave it as the original submission time
       // Actual 1 = approval timestamp (only when approved; empty if pending/rejected)
       if (sub.status === SubscriptionStatus.PENDING_PAYMENT) {
-        const approvalTs = normalizeDate(new Date().toISOString());
+        const approvalTs = formatForSheet(new Date());
         payload["Actual 1"] = approvalTs;
         payload["Actual"] = approvalTs;
         payload["Approved On"] = approvalTs;
@@ -429,27 +537,32 @@ export const updateSubscriptionInSheet = async (sub: Subscription) => {
     else if (sub.status === SubscriptionStatus.PAID) {
       payload["Payment Mode"] = sub.paymentMode || "";
       payload["Transaction ID"] = sub.transactionId || "";
-      // Only Actual 2 gets the payment timestamp — Planned 2 must be explicitly empty
-      // to prevent the Apps Script from writing to it via generic "Planned" / "Actual" keys
-      const paymentTs = normalizeDate(new Date().toISOString());
+      // Only Actual 2 gets the payment timestamp
+      const paymentTs = formatForSheet(new Date());
       payload["Actual 2"] = paymentTs;
-      payload["Planned 2"] = "";   // explicitly blank so script does NOT touch Planned 2
-      payload["Planned"] = "";     // prevent any generic mapping to Planned columns
+      payload["Time Delay 1"] = sub.timeDelay || ""; // Explicitly allow writing to Time Delay 1
     }
     // Logic for Billing/Active Section (Phase 3: Bill Upload)
     else if (sub.status === SubscriptionStatus.ACTIVE) {
       payload["Photo URL"] = sub.photoUrl || "";
       payload["Photo"] = sub.photoUrl || "";
-      payload["Next Renewal Date"] = normalizeDate(sub.nextRenewalDate) || "";
+      if (sub.photoUrl?.startsWith('data:')) {
+          payload["file_name"] = `Bill_${sub.subscriptionNo}_${Date.now()}`;
+          payload["file_mime"] = sub.photoUrl.split(';')[0].split(':')[1];
+      }
+      // Do NOT update Planned 1, Planned 2, Planned 3 or Start Date here anymore 
+      // as they contain formulas which must not be overwritten.
+      payload["End Date"] = formatForSheet(sub.endDate) || "";
+      payload["Expiry Date"] = formatForSheet(sub.endDate) || "";
+      payload["Next Renewal Date"] = formatForSheet(sub.nextRenewalDate) || "";
     }
     // Logic for Renewal Restart Section (Phase 4: Renewal)
     // When renewal is submitted, the original subscription becomes EXPIRED
     // → write the renewal submission timestamp to "Actual 3"
     else if (sub.status === SubscriptionStatus.EXPIRED) {
-      const renewalTs = normalizeDate(new Date().toISOString());
+      const renewalTs = formatForSheet(new Date());
       payload["Actual 3"] = renewalTs;          // Renewal Restart → Actual 3
-      payload["Planned 3"] = "";                // explicitly blank — do NOT touch Planned 3
-      payload["Planned"] = "";                  // prevent generic mapping to any Planned column
+      payload["Time Delay 2"] = "";             // Placeholder for Time Delay 2
     }
 
 
@@ -462,6 +575,170 @@ export const updateSubscriptionInSheet = async (sub: Subscription) => {
     return true;
   } catch (error) {
     console.error("Error updating sheet:", error);
+    return false;
+  }
+};
+
+/**
+ * Fetches all records from the "Account Audit" sheet
+ */
+export const fetchAccountAuditFromSheet = async (): Promise<any[] | null> => {
+  try {
+    const response = await fetch(`${SCRIPT_URL}?sheetName=Account+Audit`);
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    if (!Array.isArray(data) || data.length === 0) return [];
+
+    // Find the header row (searching for "timestamp" or "nameofsubscription")
+    let headerRowIndex = 0;
+    for (let i = 0; i < Math.min(data.length, 15); i++) {
+      if (data[i] && Array.isArray(data[i])) {
+        const rowStr = data[i].join('').toLowerCase();
+        if (rowStr.includes('timestamp') || rowStr.includes('nameofsubscription')) {
+          headerRowIndex = i;
+          break;
+        }
+      }
+    }
+
+    const rawHeaders = data[headerRowIndex];
+    if (!rawHeaders) return [];
+    const headers = rawHeaders.map((h: any) => h ? h.toString().toLowerCase().trim().replace(/[^a-z0-9]/g, '') : '');
+    const subNoIdx = headers.findIndex(h => h === 'subscriptionno' || h === 'subno');
+    
+    // Calculate original row indices BEFORE filtering
+    const allRecords = data.slice(headerRowIndex + 1).map((row, relativeIndex) => {
+        const obj: any = {};
+        if (!row || !Array.isArray(row)) return null;
+        
+        row.forEach((val, i) => {
+          const header = headers[i] || `col${i}`;
+          obj[header] = val;
+        });
+        
+        // Key stage tracking: map 'stage' if it's stored in 'ds'
+        obj.stage = obj.stage || obj.step || obj.auditstage || obj.auditstep || obj.ds || (obj.col32) || "Audit";
+        obj.originalRowIndex = relativeIndex + (headerRowIndex + 2); // Correct 1-indexed row number for Google Sheet
+        return obj;
+    });
+
+    return allRecords.filter((obj: any) => {
+        if (!obj) return false;
+        const rowValuesString = Object.values(obj).join(' ').toUpperCase();
+        const subNoText = (obj.subscriptionno || obj.subscriptionNo || '').toString().trim().toUpperCase();
+        
+        // Keep if it has a valid-looking SUB number OR at least a Name
+        return subNoText.startsWith("SUB-") || 
+               (obj.nameofsubscription && obj.nameofsubscription.toString().trim() !== "");
+    });
+  } catch (error) {
+    console.error("Error fetching from Account Audit sheet:", error);
+    return null;
+  }
+};
+
+
+/**
+ * Updates an existing entry in the "Account Audit" sheet with audit progress
+ */
+export const updateAuditLogSheetEntry = async (rowNumber: number, stage: string, status: string, remarks: string, nextStep: string, plannedDate?: string) => {
+  try {
+    if (!rowNumber || rowNumber < 1) return false;
+
+    const ts = formatForSheet(new Date());
+    const payload: any = {
+      sheetName: "Account Audit",
+      action: "UPDATE",
+      rowNumber: rowNumber, // rowNumber is now calculated relative to the full sheet
+      "STAGE": nextStep,
+      "ds": nextStep, // Backup stage column
+    };
+
+    const delay = plannedDate ? calculateDelayDays(plannedDate, ts) : "";
+
+    const st = stage.toLowerCase();
+    if (st === 'audit') {
+      payload["Actual1"] = ts;
+      payload["Status1"] = status;
+      payload["Remarks1"] = remarks;
+      if (delay) payload["Delay1"] = delay;
+    } else if (st === 'rectify') {
+      payload["Actual2"] = ts;
+      payload["Status2"] = status;
+      payload["Remarks2"] = remarks;
+      if (delay) payload["Delay2"] = delay;
+    } else if (st === 're-audit') {
+      payload["Actual3"] = ts;
+      payload["Status3"] = status;
+      payload["Remarks3"] = remarks;
+      if (delay) payload["Delay3"] = delay;
+    } else if (st === 'tally entry') {
+      payload["Actual4"] = ts;
+      payload["Status4"] = status;
+      payload["Remarks4"] = remarks;
+      if (delay) payload["Delay4"] = delay;
+    } else if (st === 'bill received') {
+      payload["Actual5"] = ts;
+      payload["Status5"] = status;
+      payload["Remarks5"] = remarks;
+      if (delay) payload["Delay5"] = delay;
+    }
+
+    await fetch(SCRIPT_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain" },
+      body: JSON.stringify(payload),
+      mode: "no-cors",
+    });
+    return true;
+  } catch (error) {
+    console.warn("Failed to update Account Audit sheet entry:", error);
+    return false;
+  }
+};
+
+/**
+ * Specifically logs an audit entry to the "Account Audit" sheet
+ */
+export const addToAuditLogSheet = async (sub: Subscription) => {
+  try {
+    const payload = {
+      sheetName: "Account Audit",
+      action: "ADD",
+      "Bill Status": "Pending",
+      "STAGE": sub.step || "Audit",
+      "Timestamp": formatForSheet(new Date()),
+      "Subscription No": sub.subscriptionNo,
+      "Name of Subscription": sub.subscriptionName,
+      "Frequency": sub.frequency,
+      "Price": sub.price,
+      "Start Date": formatForSheet(sub.startDate) || "-",
+      "End Date": formatForSheet(sub.endDate) || "-",
+      "Bill Image": sub.photoUrl || "-",
+      
+      // Initial empty audit fields
+      "Actual1": "", "Delay1": "", "Status1": "", "Remarks1": sub.auditRemarks || "",
+      "Actual2": "", "Delay2": "", "Status2": "", "Remarks2": "",
+      "Actual3": "", "Delay3": "", "Status3": "", "Remarks3": "",
+      "Actual4": "", "Delay4": "", "Status4": "", "Remarks4": "",
+      "Actual5": "", "Delay5": "", "Status5": "", "Remarks5": "",
+      "ds": ""
+      // Planned1-5 are NOT included here to prevent overwriting formulas/fixed data in the sheet
+    };
+
+    await fetch(SCRIPT_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain" },
+      body: JSON.stringify(payload),
+      mode: "no-cors",
+    });
+    return true;
+  } catch (error) {
+    console.warn("Failed to log to Account Audit sheet:", error);
     return false;
   }
 };
@@ -502,12 +779,13 @@ export const addToRenewalDB = async (sub: Subscription) => {
     "Purpose Of Subscription": sub.details,
     "Price ": sub.price,
     "Freq": sub.frequency,
-    "Planned": normalizeDate(sub.startDate) || normalizeDate(new Date()),
+    "Planned": formatForSheet(sub.startDate) || "",
     "Step": "",
     "Gmail ID": "",
     "How": GOOGLE_FORM_URL,
     "Query": "",
-    "Renewal No": sub.renewalNo || "",
+    "Renewal ID": sub.renewalNo || "",
+    "Renewal No": sub.renewalCount || 0,
   };
 
   try {
@@ -552,7 +830,7 @@ export const fetchFromRenewalDB = async (): Promise<any[] | null> => {
 
 // Write a log entry to the "Subscription's" sheet
 export const addToSubscriptionLogSheet = async (sub: Subscription) => {
-  const ts = normalizeDate(new Date());
+  const ts = formatForSheet(new Date());
 
   const payload: Record<string, any> = {
     sheetName: "Subscription's",
@@ -564,8 +842,8 @@ export const addToSubscriptionLogSheet = async (sub: Subscription) => {
     "Subscription Name": sub.subscriptionName,
     "Price": sub.price,
     "Frequency": sub.frequency,
-    "Start Date": normalizeDate(sub.startDate) || "",
-    "End Date": normalizeDate(sub.endDate) || ""
+    "Start Date": formatForSheet(sub.startDate) || "",
+    "End Date": formatForSheet(sub.endDate) || ""
   };
 
   try {
@@ -693,6 +971,45 @@ export const deleteUserFromSheet = async (username: string) => {
     return true;
   } catch (error) {
     console.error("Error deleting user from sheet:", error);
+    return false;
+  }
+};
+
+/**
+ * Specifically logs an entry to the "Billing Details" sheet
+ */
+export const addToBillingSheet = async (sub: Subscription) => {
+  try {
+    const ts = formatForSheet(new Date());
+    const payload = {
+      sheetName: "Billing Details",
+      action: "ADD",
+      "Timestamp": ts,
+      "Subscription No": sub.subscriptionNo,
+      "Renewal ID": sub.renewalNo || "-",
+      "Renewal No": sub.renewalCount || 0,
+      "Name Of The Person": sub.subscriberName,
+      "Company name": sub.companyName,
+      "Category of Subscriptions": sub.category,
+      "Subscription Name": sub.subscriptionName,
+      "Vendor Name": sub.subscriptionType || "",
+      "Price ": sub.price,
+      "Price": sub.price,
+      "Freq": sub.frequency,
+      "Start date": formatForSheet(sub.startDate) || "",
+      "End Date": formatForSheet(sub.endDate) || "",
+      "Bill Image": sub.photoUrl || ""
+    };
+
+    await fetch(SCRIPT_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain" },
+      body: JSON.stringify(payload),
+      mode: "no-cors",
+    });
+    return true;
+  } catch (error) {
+    console.error("Error logging to Billing Details sheet:", error);
     return false;
   }
 };

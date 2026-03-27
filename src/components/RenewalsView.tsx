@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { RotateCcw, Search, ArrowUpDown, RefreshCw, MoreHorizontal, Link, X, ExternalLink, AlertTriangle, ZoomIn } from 'lucide-react';
+import { RotateCcw, Search, ArrowUpDown, RefreshCw, MoreHorizontal, Link, X, ExternalLink, AlertTriangle, ZoomIn, FileText } from 'lucide-react';
 import { Subscription, SubscriptionStatus, UserRole } from '../types';
 
 interface RenewalsViewProps {
@@ -29,6 +29,27 @@ export const RenewalsView: React.FC<RenewalsViewProps> = ({
   });
   const [viewPhoto, setViewPhoto] = React.useState<string | null>(null);
 
+  const getOrProposeRenId = (subscription: Subscription) => {
+    if (subscription.renewalNo && subscription.renewalNo !== '-') return subscription.renewalNo;
+    return '-'; // Return dash for the list view
+  };
+
+  const calculateNextRenewalDetails = (subscription: Subscription) => {
+    // Propose an ID based on current existing IDs
+    const maxRenNo = subscriptions.reduce((max, s) => {
+      const match = s.renewalNo && typeof s.renewalNo === 'string' ? s.renewalNo.match(/REN-(\d+)/) : null;
+      return match ? Math.max(max, parseInt(match[1], 10)) : max;
+    }, 0);
+    
+    const nextRenId = `REN-${(maxRenNo + 1).toString().padStart(4, '0')}`;
+    const nextRenCount = (subscription.renewalCount || 0) + 1;
+    
+    return {
+      nextRenId,
+      nextRenCount
+    };
+  };
+
   const isExpiringOrExpired = (endDate?: string) => {
     if (!endDate) return false;
     const end = new Date(endDate);
@@ -36,6 +57,35 @@ export const RenewalsView: React.FC<RenewalsViewProps> = ({
     const diffTime = end.getTime() - now.getTime();
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     return diffDays <= 5;
+  };
+
+  const getDisplayEndDate = (endDate?: string) => {
+    if (!endDate) return '-';
+    const date = new Date(endDate);
+    if (isNaN(date.getTime())) return endDate;
+    
+    // Subtract 5 days for UI display in Renewal section
+    const adjustedDate = new Date(date);
+    adjustedDate.setDate(adjustedDate.getDate() - 5);
+    
+    return adjustedDate.toLocaleDateString('en-GB', { 
+      day: 'numeric', 
+      month: 'short', 
+      year: 'numeric' 
+    });
+  };
+
+  const getDisplayPlannedDate = (startDate?: string, planned1?: string) => {
+    const dateStr = startDate || planned1;
+    if (!dateStr) return '-';
+    const date = new Date(dateStr);
+    if (isNaN(date.getTime())) return dateStr;
+    
+    return date.toLocaleDateString('en-GB', { 
+      day: 'numeric', 
+      month: 'short', 
+      year: 'numeric' 
+    });
   };
 
   const filteredSubs = React.useMemo(() => {
@@ -99,14 +149,22 @@ export const RenewalsView: React.FC<RenewalsViewProps> = ({
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="relative max-w-5xl w-full h-full flex items-center justify-center"
+              className="relative max-w-5xl w-full h-[90vh] flex items-center justify-center p-4 md:p-8"
               onClick={e => e.stopPropagation()}
             >
-              <img 
-                src={viewPhoto} 
-                alt="Bill Full View" 
-                className="max-w-full max-h-full object-contain rounded-xl shadow-2xl shadow-black/50" 
-              />
+              {viewPhoto.startsWith('data:application/pdf') ? (
+                <iframe 
+                  src={viewPhoto} 
+                  title="PDF Bill" 
+                  className="w-full h-full rounded-xl shadow-2xl bg-white"
+                />
+              ) : (
+                <img 
+                  src={viewPhoto} 
+                  alt="Bill Full View" 
+                  className="max-w-full max-h-full object-contain rounded-xl shadow-2xl shadow-black/50" 
+                />
+              )}
             </motion.div>
           </motion.div>
         )}
@@ -139,7 +197,11 @@ export const RenewalsView: React.FC<RenewalsViewProps> = ({
 
               <div className="p-8 pb-4">
                 <h3 className="text-xl font-bold text-zinc-800 mb-1">Renew Subscription</h3>
-                <p className="text-sm font-medium text-zinc-500">Subscription <span className="text-zinc-800 font-bold">{renewModal.sub.subscriptionNo}</span></p>
+                <div className="flex flex-col gap-1 mt-2">
+                  <p className="text-xs font-semibold text-zinc-500">Original Sub No: <span className="text-zinc-800 font-bold">{renewModal.sub.subscriptionNo}</span></p>
+                  <p className="text-xs font-semibold text-indigo-600">New Renewal ID: <span className="font-bold">{renewModal.sub.renewalNo}</span></p>
+                  <p className="text-xs font-semibold text-indigo-600">Renewal Number: <span className="font-bold">{renewModal.sub.renewalCount}</span></p>
+                </div>
               </div>
               
               <div className="p-8 pt-4 space-y-6">
@@ -175,16 +237,16 @@ export const RenewalsView: React.FC<RenewalsViewProps> = ({
                   <div>
                     <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1 block">End Date</label>
                     <p className="text-sm font-bold text-rose-500">
-                      {new Date(renewModal.sub.endDate!).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                      {getDisplayEndDate(renewModal.sub.endDate)}
                     </p>
                   </div>
                   <div>
-                    <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1 block">Gmail ID</label>
-                    <p className="text-sm font-bold text-zinc-700">{renewModal.sub.gmailId || '-'}</p>
+                    <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1 block">Renewal ID</label>
+                    <p className="text-sm font-bold text-zinc-700 italic font-mono">{renewModal.sub.renewalNo || '-'}</p>
                   </div>
                   <div>
-                    <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1 block">How</label>
-                    <p className="text-sm font-bold text-zinc-700">{renewModal.sub.how || '-'}</p>
+                    <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1 block">Renewal Number</label>
+                    <p className="text-sm font-bold text-zinc-700 italic font-mono">{renewModal.sub.renewalCount || '-'}</p>
                   </div>
                 </div>
 
@@ -344,32 +406,32 @@ export const RenewalsView: React.FC<RenewalsViewProps> = ({
       </AnimatePresence>
 
       {/* Standardized Header */}
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
         <div className="flex items-center gap-4">
           <div className="w-12 h-12 bg-indigo-50 rounded-xl flex items-center justify-center border border-indigo-100 shadow-sm">
             <RotateCcw className="text-indigo-600 w-7 h-7" />
           </div>
           <div>
-            <h2 className="text-2xl font-bold text-indigo-900 tracking-tight">Renewals</h2>
-            <p className="text-zinc-500 text-sm font-medium">Renew subscriptions that have passed end date</p>
+            <h2 className="text-xl md:text-2xl font-bold text-indigo-900 tracking-tight">Renewals</h2>
+            <p className="text-zinc-500 text-xs md:text-sm font-medium">Renew subscriptions that have passed end date</p>
           </div>
         </div>
-        <button className="w-11 h-11 bg-white rounded-xl flex items-center justify-center border border-indigo-50 shadow-sm text-zinc-400 hover:text-indigo-600 transition-colors">
+        <button className="hidden sm:flex w-11 h-11 bg-white rounded-xl items-center justify-center border border-indigo-50 shadow-sm text-zinc-400 hover:text-indigo-600 transition-colors">
           <MoreHorizontal className="w-6 h-6" />
         </button>
       </div>
 
       {/* Tabs */}
-      <div className="flex bg-white rounded-xl border border-indigo-100 p-1 shadow-sm">
+      <div className="flex bg-white rounded-xl border border-indigo-100 p-1 shadow-sm overflow-x-auto">
         <button
           onClick={() => setView('pending')}
-          className={`flex-1 py-2.5 text-sm font-bold rounded-lg transition-all ${view === 'pending' ? 'bg-white text-indigo-600 border-2 border-indigo-600 shadow-sm' : 'text-zinc-400 hover:text-zinc-600'}`}
+          className={`flex-1 py-2.5 px-4 text-xs md:text-sm font-bold rounded-lg transition-all min-w-[100px] ${view === 'pending' ? 'bg-white text-indigo-600 border-2 border-indigo-600 shadow-sm' : 'text-zinc-400 hover:text-zinc-600'}`}
         >
           Pending
         </button>
         <button
           onClick={() => setView('history')}
-          className={`flex-1 py-2.5 text-sm font-bold rounded-lg transition-all ${view === 'history' ? 'bg-white text-indigo-600 border-2 border-indigo-600 shadow-sm' : 'text-zinc-400 hover:text-zinc-600'}`}
+          className={`flex-1 py-2.5 px-4 text-xs md:text-sm font-bold rounded-lg transition-all min-w-[100px] ${view === 'history' ? 'bg-white text-indigo-600 border-2 border-indigo-600 shadow-sm' : 'text-zinc-400 hover:text-zinc-600'}`}
         >
           History
         </button>
@@ -390,8 +452,8 @@ export const RenewalsView: React.FC<RenewalsViewProps> = ({
           </div>
         </div>
 
-        {/* Table */}
-        <div className="overflow-x-auto">
+        {/* Desktop Table View */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left">
             <thead>
               <tr className="bg-zinc-50/50 border-b border-indigo-50">
@@ -403,6 +465,7 @@ export const RenewalsView: React.FC<RenewalsViewProps> = ({
                     <th className="table-header whitespace-nowrap">Timestamp</th>
                     <th className="table-header whitespace-nowrap text-center">Status</th>
                     <th className="table-header text-center whitespace-nowrap">Subscription No</th>
+                    <th className="table-header text-center whitespace-nowrap">Renewal ID</th>
                     <th className="table-header text-center whitespace-nowrap">Renewal No</th>
                     <th className="table-header whitespace-nowrap">Company</th>
                     <th className="table-header whitespace-nowrap">Name of the Person</th>
@@ -417,8 +480,9 @@ export const RenewalsView: React.FC<RenewalsViewProps> = ({
                   </>
                 ) : (
                   <>
-                    <th className="table-header whitespace-nowrap py-4 px-4 flex items-center gap-1">Renewal Date <ArrowUpDown className="w-3 h-3"/></th>
-                    <th className="table-header whitespace-nowrap py-4 px-4">Renewal No</th>
+                    <th className="table-header whitespace-nowrap py-4 px-4 flex items-center gap-1">End Date <ArrowUpDown className="w-3 h-3"/></th>
+                    <th className="table-header whitespace-nowrap py-4 px-4">Renewal ID</th>
+                    <th className="table-header whitespace-nowrap py-4 px-4 text-center">Renewal No</th>
                     <th className="table-header whitespace-nowrap py-4 px-4">Subscription No</th>
                     <th className="table-header whitespace-nowrap py-4 px-4">Company</th>
                     <th className="table-header whitespace-nowrap py-4 px-4">Subscriber</th>
@@ -431,116 +495,159 @@ export const RenewalsView: React.FC<RenewalsViewProps> = ({
               </tr>
             </thead>
             <tbody className="divide-y divide-indigo-50/50">
-              {filteredSubs.length === 0 ? (
-                <tr>
-                  <td colSpan={view === 'pending' ? 14 : 9} className="py-24 text-center text-zinc-300 font-medium italic">
-                    No {view} renewals found
-                  </td>
-                </tr>
-              ) : (
-                filteredSubs.map((sub, idx) => (
-                  <tr key={sub.id} className="hover:bg-indigo-50/20 transition-colors group">
-                    {view === 'pending' ? (
-                      <>
-                        <td className="table-cell py-4 px-4 align-middle text-center">
-                          <div className="flex items-center justify-center gap-2">
-                            {sub.status === SubscriptionStatus.ACTIVE ? (
-                              <>
-                                <button
-                                  disabled={!isExpiringOrExpired(sub.endDate)}
-                                  onClick={() => setRenewModal({ open: true, sub })}
-                                  className={`px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all active:scale-95 flex items-center gap-1.5 whitespace-nowrap uppercase tracking-wider ${isExpiringOrExpired(sub.endDate) ? 'bg-indigo-50 text-indigo-600 border border-indigo-100 hover:bg-indigo-100' : 'bg-zinc-50 text-zinc-400 border border-zinc-100 cursor-not-allowed grayscale opacity-50'}`}
-                                >
-                                  <RefreshCw className="w-3.5 h-3.5" /> Renew
-                                </button>
-                                <button
-                                  onClick={() => setCancelModal({ open: true, sub })}
-                                  className="bg-rose-50 text-rose-600 border border-rose-100 px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all active:scale-95 flex items-center gap-1.5 whitespace-nowrap uppercase tracking-wider hover:bg-rose-100"
-                                >
-                                  <X className="w-3.5 h-3.5" /> Cancel
-                                </button>
-                              </>
+              {filteredSubs.length > 0 && filteredSubs.map((sub) => (
+                <tr key={sub.id} className="hover:bg-indigo-50/20 transition-colors group">
+                  {view === 'pending' ? (
+                    <>
+                      <td className="table-cell py-4 px-4 align-middle text-center">
+                        <div className="flex items-center justify-center gap-2">
+                          <button
+                            disabled={!isExpiringOrExpired(sub.endDate)}
+                            onClick={() => {
+                              const { nextRenId, nextRenCount } = calculateNextRenewalDetails(sub);
+                              setRenewModal({ 
+                                open: true, 
+                                sub: { 
+                                  ...sub, 
+                                  renewalNo: nextRenId, 
+                                  renewalCount: nextRenCount 
+                                } 
+                              });
+                            }}
+                            className={`px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all active:scale-95 flex items-center gap-1.5 whitespace-nowrap uppercase tracking-wider ${isExpiringOrExpired(sub.endDate) ? 'bg-indigo-50 text-indigo-600 border border-indigo-100 hover:bg-indigo-100' : 'bg-zinc-50 text-zinc-400 border border-zinc-100 cursor-not-allowed grayscale opacity-50'}`}
+                          >
+                            <RefreshCw className="w-3.5 h-3.5" /> Renew
+                          </button>
+                          <button
+                            onClick={() => setCancelModal({ open: true, sub })}
+                            className="bg-rose-50 text-rose-600 border border-rose-100 px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all active:scale-95 flex items-center gap-1.5 whitespace-nowrap uppercase tracking-wider hover:bg-rose-100"
+                          >
+                            <X className="w-3.5 h-3.5" /> Cancel
+                          </button>
+                        </div>
+                      </td>
+                      <td className="table-cell py-4 px-4 align-middle text-zinc-500 text-[10px] font-medium text-center">
+                        {(() => {
+                          const date = new Date(sub.createdAt);
+                          return isNaN(date.getTime()) 
+                            ? sub.createdAt 
+                            : date.toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true });
+                        })()}
+                      </td>
+                      <td className="table-cell py-4 px-4 align-middle text-center">
+                        <span className={`px-3 py-1 rounded-full text-[10px] font-bold border ${isExpiringOrExpired(sub.endDate) ? 'border-amber-200 bg-amber-50 text-amber-600' : 'border-zinc-200 bg-zinc-50 text-zinc-500'} whitespace-nowrap`}>
+                          {isExpiringOrExpired(sub.endDate) ? 'Needs Renewal' : 'Not Due Yet'}
+                        </span>
+                      </td>
+                      <td className="table-cell py-4 px-4 align-middle font-mono text-xs text-zinc-500 text-center">{sub.subscriptionNo}</td>
+                      <td className="table-cell py-4 px-4 align-middle font-mono text-xs text-zinc-500 text-center">{getOrProposeRenId(sub)}</td>
+                      <td className="table-cell py-4 px-4 align-middle font-mono text-xs text-zinc-400 font-medium text-center">{sub.renewalCount || '-'}</td>
+                      <td className="table-cell py-4 px-4 align-middle text-zinc-600">{sub.companyName}</td>
+                      <td className="table-cell py-4 px-4 align-middle text-zinc-600">{sub.subscriberName}</td>
+                      <td className="table-cell py-4 px-4 align-middle text-zinc-500 text-xs">{sub.category}</td>
+                      <td className="table-cell py-4 px-4 align-middle text-indigo-500 font-bold">{sub.subscriptionName}</td>
+                      <td className="table-cell py-4 px-4 align-middle text-indigo-900 text-xs font-bold">{sub.subscriptionType || '-'}</td>
+                      <td className="table-cell py-4 px-4 align-middle text-zinc-500 text-center text-xs">{sub.frequency}</td>
+                      <td className="table-cell py-4 px-4 align-middle text-zinc-500 text-[10px] font-medium text-center">
+                        {getDisplayPlannedDate(sub.startDate, sub.planned1)}
+                      </td>
+                      <td className="table-cell py-4 px-4 align-middle text-zinc-500 text-[10px] font-medium text-center">
+                        {getDisplayEndDate(sub.endDate)}
+                      </td>
+                      <td className="table-cell py-4 px-4 align-middle font-black text-emerald-600 text-center whitespace-nowrap">₹{sub.price.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                      <td className="table-cell py-4 px-4 align-middle text-center">
+                        {sub.photoUrl ? (
+                          <div 
+                            onClick={() => setViewPhoto(sub.photoUrl!)}
+                            className="w-10 h-10 mx-auto rounded-lg border-2 border-indigo-100 overflow-hidden relative cursor-zoom-in hover:border-indigo-500 transition-all shadow-sm group/bill flex items-center justify-center bg-white"
+                          >
+                            {sub.photoUrl.startsWith('data:application/pdf') ? (
+                              <FileText className="w-5 h-5 text-rose-500" />
                             ) : (
-                              <span className="text-xs text-zinc-400 italic">In pipeline</span>
+                              <img src={sub.photoUrl} alt="Bill" className="w-full h-full object-cover" />
                             )}
                           </div>
-                        </td>
-                        <td className="table-cell py-4 px-4 align-middle text-zinc-500 text-[10px] font-medium text-center">
-                          {(() => {
-                            const date = new Date(sub.createdAt);
-                            return isNaN(date.getTime()) 
-                              ? sub.createdAt 
-                              : date.toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true });
-                          })()}
-                        </td>
-                        <td className="table-cell py-4 px-4 align-middle text-center">
-                          {(() => {
-                            const isDue = isExpiringOrExpired(sub.endDate);
-                            const meta = isDue 
-                              ? { label: 'Needs Renewal', cls: 'border-amber-200 bg-amber-50 text-amber-600' }
-                              : { label: 'Not Due Yet', cls: 'border-zinc-200 bg-zinc-50 text-zinc-500' };
-                            return (
-                              <span className={`px-3 py-1 rounded-full text-[10px] font-bold border ${meta.cls} whitespace-nowrap`}>
-                                {meta.label}
-                              </span>
-                            );
-                          })()}
-                        </td>
-                        <td className="table-cell py-4 px-4 align-middle font-mono text-xs text-zinc-500 text-center">{sub.subscriptionNo}</td>
-                        <td className="table-cell py-4 px-4 align-middle font-mono text-xs text-zinc-400 font-medium text-center">{sub.renewalNo || '-'}</td>
-                        <td className="table-cell py-4 px-4 align-middle text-zinc-600">{sub.companyName}</td>
-                        <td className="table-cell py-4 px-4 align-middle text-zinc-600">{sub.subscriberName}</td>
-                        <td className="table-cell py-4 px-4 align-middle text-zinc-500 text-xs">{sub.category}</td>
-                        <td className="table-cell py-4 px-4 align-middle text-indigo-500 font-bold">{sub.subscriptionName}</td>
-                        <td className="table-cell py-4 px-4 align-middle text-indigo-900 text-xs font-bold">{sub.subscriptionType || '-'}</td>
-                        <td className="table-cell py-4 px-4 align-middle text-zinc-500 text-center text-xs">{sub.frequency}</td>
-                        <td className="table-cell py-4 px-4 align-middle text-zinc-500 text-[10px] font-medium text-center">
-                          {sub.startDate && !isNaN(new Date(sub.startDate).getTime()) ? new Date(sub.startDate).toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '-'}
-                        </td>
-                        <td className="table-cell py-4 px-4 align-middle text-zinc-500 text-[10px] font-medium text-center">
-                          {sub.endDate && !isNaN(new Date(sub.endDate).getTime()) ? new Date(sub.endDate).toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '-'}
-                        </td>
-                        <td className="table-cell py-4 px-4 align-middle font-black text-emerald-600 text-center whitespace-nowrap">₹{sub.price.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
-                        <td className="table-cell py-4 px-4 align-middle text-center">
-                          {sub.photoUrl ? (
-                            <div 
-                              onClick={() => setViewPhoto(sub.photoUrl!)}
-                              className="w-10 h-10 mx-auto rounded-lg border-2 border-indigo-100 overflow-hidden relative cursor-zoom-in hover:border-indigo-500 transition-all shadow-sm group/bill"
-                            >
-                              <img src={sub.photoUrl} alt="Bill" className="w-full h-full object-cover" />
-                              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/bill:opacity-100 transition-opacity flex items-center justify-center">
-                                <ZoomIn className="w-4 h-4 text-white" />
-                              </div>
-                            </div>
-                          ) : (
-                            <span className="text-[10px] text-zinc-300 italic">No bill</span>
-                          )}
-                        </td>
-                      </>
-                    ) : (
-                      <>
-                        <td className="table-cell py-4 px-4 align-middle text-zinc-600 font-medium">
-                          {sub.endDate ? new Date(sub.endDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '-'}
-                        </td>
-                        <td className="table-cell py-4 px-4 align-middle font-black text-indigo-600 font-mono text-xs italic">{sub.renewalNo || '-'}</td>
-                        <td className="table-cell py-4 px-4 align-middle font-mono text-zinc-400 font-bold text-xs">{sub.subscriptionNo}</td>
-                        <td className="table-cell py-4 px-4 align-middle text-zinc-600 font-bold">{sub.companyName}</td>
-                        <td className="table-cell py-4 px-4 align-middle text-zinc-600">{sub.subscriberName}</td>
-                        <td className="table-cell py-4 px-4 align-middle text-indigo-500 font-bold">{sub.subscriptionName}</td>
-                        <td className="table-cell py-4 px-4 align-middle text-zinc-500 text-center text-xs">{sub.frequency}</td>
-                        <td className="table-cell py-4 px-4 align-middle text-center">
-                          <span className={`px-4 py-1 rounded-full text-[10px] font-bold border ${sub.status === SubscriptionStatus.CANCELLED ? 'border-rose-200 bg-rose-50 text-rose-600' : 'border-emerald-200 bg-emerald-50 text-emerald-600'}`}>
-                            {sub.status === SubscriptionStatus.CANCELLED ? 'Cancelled' : 'Renewed'}
-                          </span>
-                        </td>
-                        <td className="table-cell py-4 px-4 align-middle font-black text-emerald-600 text-center whitespace-nowrap">₹{sub.price.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
-                      </>
-                    )}
-                  </tr>
-                ))
-              )}
+                        ) : '-'}
+                      </td>
+                    </>
+                  ) : (
+                    <>
+                      <td className="table-cell py-4 px-4 align-middle text-zinc-600 font-medium whitespace-nowrap">
+                        {getDisplayEndDate(sub.endDate)}
+                      </td>
+                      <td className="table-cell py-4 px-4 align-middle font-black text-indigo-600 font-mono text-xs italic">{sub.renewalNo || '-'}</td>
+                      <td className="table-cell py-4 px-4 align-middle font-black text-indigo-600 font-mono text-xs italic text-center">{sub.renewalCount || '-'}</td>
+                      <td className="table-cell py-4 px-4 align-middle font-mono text-zinc-400 font-bold text-xs">{sub.subscriptionNo}</td>
+                      <td className="table-cell py-4 px-4 align-middle text-zinc-600 font-bold">{sub.companyName}</td>
+                      <td className="table-cell py-4 px-4 align-middle text-zinc-600">{sub.subscriberName}</td>
+                      <td className="table-cell py-4 px-4 align-middle text-indigo-500 font-bold">{sub.subscriptionName}</td>
+                      <td className="table-cell py-4 px-4 align-middle text-zinc-500 text-center text-xs">{sub.frequency}</td>
+                      <td className="table-cell py-4 px-4 align-middle text-center">
+                        <span className={`px-4 py-1 rounded-full text-[10px] font-bold border ${sub.status === SubscriptionStatus.CANCELLED ? 'border-rose-200 bg-rose-50 text-rose-600' : 'border-emerald-200 bg-emerald-50 text-emerald-600'}`}>
+                          {sub.status === SubscriptionStatus.CANCELLED ? 'Cancelled' : 'Renewed'}
+                        </span>
+                      </td>
+                      <td className="table-cell py-4 px-4 align-middle font-black text-emerald-600 text-center whitespace-nowrap">₹{sub.price.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                    </>
+                  )}
+                </tr>
+              ))}
             </tbody>
           </table>
+        </div>
+
+        {/* Mobile Card View */}
+        <div className="md:hidden divide-y divide-indigo-50">
+          {filteredSubs.length > 0 ? filteredSubs.map((sub) => (
+            <div key={sub.id} className="p-4 space-y-3 bg-white hover:bg-indigo-50/20 transition-colors">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-bold text-indigo-600 font-mono italic">{sub.subscriptionNo}</span>
+                <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold border ${isExpiringOrExpired(sub.endDate) ? 'border-amber-200 bg-amber-50 text-amber-600' : 'border-zinc-200 bg-zinc-50 text-zinc-500'}`}>
+                  {isExpiringOrExpired(sub.endDate) ? 'Needs Renewal' : 'Not Due Yet'}
+                </span>
+              </div>
+
+              <div>
+                <h4 className="text-sm font-black text-indigo-900 leading-tight">{sub.subscriptionName}</h4>
+                <p className="text-[11px] text-zinc-500 font-medium">{sub.companyName}</p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+                <div>
+                  <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest leading-none mb-0.5">End Date</p>
+                  <p className="text-xs font-bold text-rose-500">
+                    {getDisplayEndDate(sub.endDate)}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest leading-none mb-0.5">Price</p>
+                  <p className="text-xs font-black text-emerald-600">₹{sub.price.toLocaleString()}</p>
+                </div>
+              </div>
+
+              {view === 'pending' && (
+                <div className="flex items-center gap-2 pt-2 border-t border-indigo-50/50">
+                  <button
+                    disabled={!isExpiringOrExpired(sub.endDate)}
+                    onClick={() => setRenewModal({ open: true, sub })}
+                    className={`flex-1 py-2.5 rounded-xl text-[10px] font-black transition-all flex items-center justify-center gap-2 uppercase tracking-widest ${isExpiringOrExpired(sub.endDate) ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' : 'bg-zinc-100 text-zinc-400 cursor-not-allowed'}`}
+                  >
+                    <RefreshCw className="w-3.5 h-3.5" /> Renew
+                  </button>
+                  <button
+                    onClick={() => setCancelModal({ open: true, sub })}
+                    className="px-4 py-2.5 bg-rose-50 text-rose-600 border border-rose-100 rounded-xl text-[10px] font-black transition-all flex items-center justify-center uppercase tracking-widest"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              )}
+            </div>
+          )) : (
+            <div className="py-12 text-center text-zinc-300 font-medium italic text-sm">
+              No {view} renewals found
+            </div>
+          )}
         </div>
       </div>
     </motion.div>

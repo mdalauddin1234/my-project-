@@ -295,24 +295,24 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ subscriptions, COL
       className="space-y-6"
     >
       {/* Standardized Header */}
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
         <div className="flex items-center gap-4">
           <div className="w-12 h-12 bg-indigo-50 rounded-xl flex items-center justify-center border border-indigo-100 shadow-sm">
             <Home className="w-7 h-7 text-indigo-600" />
           </div>
           <div>
-            <h2 className="text-2xl font-bold text-indigo-900 tracking-tight">Dashboard</h2>
-            <p className="text-zinc-500 text-sm font-medium">View your Subscription analytics</p>
+            <h2 className="text-xl md:text-2xl font-bold text-indigo-900 tracking-tight">Dashboard</h2>
+            <p className="text-zinc-500 text-xs md:text-sm font-medium">View your Subscription analytics</p>
           </div>
         </div>
-        <button className="w-11 h-11 bg-white rounded-xl flex items-center justify-center border border-indigo-50 shadow-sm text-indigo-950/40 hover:text-indigo-600 transition-colors">
+        <button className="w-11 h-11 bg-white rounded-xl flex items-center justify-center border border-indigo-50 shadow-sm text-indigo-950/40 hover:text-indigo-600 transition-colors self-end sm:self-auto">
           <PanelRight className="w-5 h-5" />
         </button>
       </div>
 
-      {/* Date Picker Integrated Card - Right Aligned */}
-      <div className="flex justify-end mb-6">
-        <div className="bg-white p-2 rounded-[22px] shadow-sm border border-indigo-50 inline-flex items-center min-w-[320px] relative">
+      {/* Date Picker Integrated Card - Right Aligned on Desktop, Full Width on Mobile */}
+      <div className="flex justify-end mb-6 w-full">
+        <div className="bg-white p-2 rounded-[22px] shadow-sm border border-indigo-50 inline-flex items-center w-full md:min-w-[320px] md:w-auto relative">
             <div className="flex items-center gap-1 w-full">
               <button
                 onClick={() => setShowDatePicker(!showDatePicker)}

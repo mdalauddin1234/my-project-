@@ -101,12 +101,14 @@ export const MySubscriptionsView: React.FC<MySubscriptionsViewProps> = ({
           </div>
         </div>
 
-        <div className="overflow-x-auto">
+        {/* Desktop Table View */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full border-collapse">
             <thead>
               <tr className="bg-zinc-50/80">
                 <th className="table-header text-left whitespace-nowrap">Timestamp</th>
                 <th className="table-header text-left whitespace-nowrap">Subscription No</th>
+                <th className="table-header text-left whitespace-nowrap">Renewal ID</th>
                 <th className="table-header text-left whitespace-nowrap">Renewal No</th>
                 <th className="table-header text-left whitespace-nowrap">Name of the Person</th>
                 <th className="table-header text-left whitespace-nowrap">Company name</th>
@@ -157,6 +159,7 @@ export const MySubscriptionsView: React.FC<MySubscriptionsViewProps> = ({
                   </td>
                   <td className="table-cell font-mono text-xs text-indigo-600 font-bold">{sub.subscriptionNo}</td>
                   <td className="table-cell font-mono text-xs text-zinc-400 font-medium">{sub.renewalNo || '-'}</td>
+                  <td className="table-cell font-mono text-xs text-zinc-400 font-medium">{sub.renewalCount || '-'}</td>
                   <td className="table-cell text-zinc-600">{sub.subscriberName}</td>
                   <td className="table-cell font-medium text-zinc-700">{sub.companyName}</td>
                   <td className="table-cell text-zinc-600 text-sm">{sub.category}</td>
@@ -180,7 +183,6 @@ export const MySubscriptionsView: React.FC<MySubscriptionsViewProps> = ({
                       year: 'numeric',
                       hour: '2-digit',
                       minute: '2-digit',
-                      second: '2-digit',
                       hour12: true
                     }) : '-'}
                   </td>
@@ -191,7 +193,6 @@ export const MySubscriptionsView: React.FC<MySubscriptionsViewProps> = ({
                       year: 'numeric',
                       hour: '2-digit',
                       minute: '2-digit',
-                      second: '2-digit',
                       hour12: true
                     }) : '-'}
                   </td>
@@ -209,16 +210,62 @@ export const MySubscriptionsView: React.FC<MySubscriptionsViewProps> = ({
                   </td>
                 </tr>
               ))}
-              {filteredSubscriptions.length === 0 && (
-                <tr>
-                  <td colSpan={10} className="py-12 text-center text-zinc-400 text-sm">
-                    No subscriptions found
-                  </td>
-                </tr>
-              )}
             </tbody>
           </table>
         </div>
+
+        {/* Mobile Card View */}
+        <div className="md:hidden divide-y divide-indigo-50">
+          {filteredSubscriptions.map((sub) => (
+            <div key={sub.id} className="p-4 space-y-3 bg-white hover:bg-indigo-50/30 transition-colors">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-bold text-indigo-600 font-mono">{sub.subscriptionNo}</span>
+                <StatusBadge status={sub.status} />
+              </div>
+              
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Subscriber</label>
+                  <p className="text-sm font-bold text-zinc-800">{sub.subscriberName}</p>
+                </div>
+                <div>
+                  <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Company</label>
+                  <p className="text-sm font-bold text-zinc-800">{sub.companyName}</p>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Subscription</label>
+                <p className="text-sm font-bold text-indigo-600">{sub.subscriptionName || '-'}</p>
+                <p className="text-[10px] text-zinc-500 font-medium">{sub.subscriptionType || '-'}</p>
+              </div>
+
+              <div className="flex items-center justify-between pt-2 border-t border-indigo-50/50">
+                <div className="flex flex-col">
+                  <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Price</label>
+                  <span className="text-lg font-black text-emerald-600">₹{sub.price.toLocaleString()}</span>
+                </div>
+                <button 
+                  onClick={() => deleteSubscription(sub.id)}
+                  className="p-3 bg-rose-50 text-rose-500 rounded-xl hover:bg-rose-100 transition-colors"
+                >
+                  <Trash2 className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="text-[10px] text-zinc-400 font-medium space-y-1">
+                <div>Start: {sub.startDate && !isNaN(new Date(sub.startDate).getTime()) ? new Date(sub.startDate).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hour12: true }) : '-'}</div>
+                <div>End: {sub.endDate && !isNaN(new Date(sub.endDate).getTime()) ? new Date(sub.endDate).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hour12: true }) : '-'}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {filteredSubscriptions.length === 0 && (
+          <div className="py-12 text-center text-zinc-400 text-sm bg-white">
+            No subscriptions found
+          </div>
+        )}
       </div>
     </motion.div>
   );

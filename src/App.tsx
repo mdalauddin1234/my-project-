@@ -52,6 +52,8 @@ import { UserManagementView } from './components/UserManagementView';
 import { SubscriptionForm } from './components/SubscriptionForm';
 import { LoginView } from './components/LoginView';
 import { BillingDetailsView } from './components/BillingDetailsView';
+import { AccountAuditView } from './components/AccountAuditView';
+import { ShieldCheck } from 'lucide-react';
 
 // Services
 import {
@@ -60,14 +62,18 @@ import {
   deleteSubscriptionFromSheet,
   updateSubscriptionInSheet,
   addToRenewalDB,
+  addToAuditLogSheet,
   fetchFromRenewalDB,
   fetchUsersFromSheet,
   addUserToSheet,
   deleteUserFromSheet,
-  fetchMastersFromSheet
+  fetchMastersFromSheet,
+  addToBillingSheet,
+  fetchAccountAuditFromSheet,
+  updateAuditLogSheetEntry
 } from './services/googleSheetService';
 
-type TabType = 'dashboard' | 'new' | 'my-subscriptions' | 'renewals' | 'pending-approval' | 'payments' | 'billing-details' | 'user-management';
+type TabType = 'dashboard' | 'new' | 'my-subscriptions' | 'renewals' | 'pending-approval' | 'payments' | 'billing-details' | 'account-audit' | 'user-management';
 
 // Helper to calculate end date based on frequency
 const calculateEndDate = (startDate: string, frequency: Frequency): string => {
@@ -96,10 +102,15 @@ export default function App() {
   const [users, setUsers] = useState<User[]>([]);
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
   const [mastersData, setMastersData] = useState<{ companies: string[], persons: string[], categories: Record<string, string[]> } | null>(null);
-  const [activeTab, setActiveTab] = useState<TabType>('dashboard');
+  const [activeTab, setActiveTab] = useState<TabType>(() => {
+    const saved = localStorage.getItem('subflow_active_tab');
+    if (saved) return saved as TabType;
+    return 'dashboard';
+  });
   const [searchQuery, setSearchQuery] = useState('');
   const [isSyncing, setIsSyncing] = useState(false);
   const [renewalSubscription, setRenewalSubscription] = useState<Subscription | null>(null);
+  const [auditLogData, setAuditLogData] = useState<any[]>([]);
   const lastActionTimeRef = React.useRef(0);
 
   const handleFetchFromSheet = React.useCallback(async (force = false) => {
@@ -117,10 +128,13 @@ export default function App() {
       if (syncedMasters !== null) setMastersData(syncedMasters);
 
       // Pass already-fetched masters so fetchFromSheet doesn't call fetchMastersFromSheet again
-      const [syncedSubs, renewalData] = await Promise.all([
+      const [syncedSubs, renewalData, auditData] = await Promise.all([
         fetchFromSheet(syncedMasters),
-        fetchFromRenewalDB()
+        fetchFromRenewalDB(),
+        fetchAccountAuditFromSheet()
       ]);
+
+      if (auditData) setAuditLogData(auditData);
 
       if (syncedSubs !== null) {
         // Merge renewalNo from renewalData based on subscriptionNo
@@ -134,7 +148,7 @@ export default function App() {
               return { 
                 ...sub, 
                 renewalNo: String(renewal.renewalno || sub.renewalNo || ''),
-                step: String(renewal.step || sub.step || ''),
+                step: renewal.step && renewal.step !== '' && renewal.step !== '-' ? String(renewal.step) : sub.step,
                 gmailId: String(renewal.gmailid || sub.gmailId || ''),
                 how: String(renewal.how || sub.how || ''),
                 query: String(renewal.query || sub.query || ''),
@@ -143,7 +157,18 @@ export default function App() {
           }
           return sub;
         });
+        
         setSubscriptions(mergedSubs);
+
+        // Auto-log newly expiring subscriptions to the Renewal DB
+        // mergedSubs.forEach(sub => {
+        //   if (sub.status === SubscriptionStatus.ACTIVE && 
+        //       isExpiringSoon(sub.endDate) && 
+        //       (!sub.renewalNo || sub.renewalNo === '' || sub.renewalNo === '-')) {
+        //     console.log("Auto-logging expiring subscription to Renewal DB:", sub.subscriptionNo);
+        //     addToRenewalDB(sub);
+        //   }
+        // });
       }
 
       if (syncedUsers !== null) {
@@ -180,8 +205,12 @@ export default function App() {
     if (savedUser) {
       const user = JSON.parse(savedUser);
       setCurrentUser(user);
+    const savedTab = localStorage.getItem('subflow_active_tab');
+    if (savedTab) setActiveTab(savedTab as TabType);
+    else {
       if (user.role === UserRole.ADMIN) setActiveTab('dashboard');
       else setActiveTab('new');
+    }
     }
 
     handleFetchFromSheet(true);
@@ -192,10 +221,28 @@ export default function App() {
     else localStorage.removeItem('subflow_user');
   }, [currentUser]);
 
+  useEffect(() => {
+    localStorage.setItem('subflow_active_tab', activeTab);
+  }, [activeTab]);
+
+  // Background auto-sync every 30 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (currentUser) {
+        handleFetchFromSheet(true);
+      }
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [currentUser, handleFetchFromSheet]);
+
   const handleLogin = (user: User) => {
     setCurrentUser(user);
-    if (user.role === UserRole.ADMIN) setActiveTab('dashboard');
-    else setActiveTab('new');
+    const savedTab = localStorage.getItem('subflow_active_tab');
+    if (savedTab) setActiveTab(savedTab as TabType);
+    else {
+      if (user.role === UserRole.ADMIN) setActiveTab('dashboard');
+      else setActiveTab('new');
+    }
   };
 
   const handleLogout = () => {
@@ -215,6 +262,10 @@ export default function App() {
     
 
     
+    // Use the pre-calculated renewal details from the form/modal
+    const renewalNo = renewalSubscription?.renewalNo || '';
+    const renewalCount = renewalSubscription?.renewalCount || 0;
+
     const sub: Subscription = {
       ...newSub,
       id: Math.random().toString(36).substr(2, 9),
@@ -224,8 +275,8 @@ export default function App() {
       startDate: effectiveStartDate,
       endDate: calculateEndDate(effectiveStartDate, newSub.frequency),
       parentSubscriptionNo: renewalSubscription?.subscriptionNo,
-      // Carry over the renewalNo so it displays correctly in all sections
-      renewalNo: renewalSubscription?.renewalNo || newSub.renewalNo || '',
+      renewalNo: renewalNo,
+      renewalCount: renewalCount,
     };
 
     // Optimistically add to UI
@@ -237,23 +288,32 @@ export default function App() {
     if (success) {
       console.log("Data sent to Google Sheets successfully.");
 
-      // If this was a renewal, mark the original as EXPIRED so it moves to history
+      // If this was a renewal, mark the original as EXPIRED
       if (renewalSubscription) {
+        // Original sub keeps its EXISTING renewalNo and count when it expires
+        // Actually, if it was renewed into something NEW, we keep the original's state
+        updateStatus(renewalSubscription.id, SubscriptionStatus.EXPIRED, { 
+          renewalNo: renewalSubscription.renewalNo, // Original's ID (e.g. REN-0001) if it had one
+          renewalCount: renewalSubscription.renewalCount ? (renewalSubscription.renewalCount - 1) : 0 
+        });
         await addToRenewalDB(sub);
-        updateStatus(renewalSubscription.id, SubscriptionStatus.EXPIRED);
       }
 
       setRenewalSubscription(null);
+      
+      // Auto-sync is now OFF
     }
   };
 
   const updateStatus = async (id: string, status: SubscriptionStatus, extraData: Partial<Subscription> = {}) => {
     // Use a functional setState to get the CURRENT (non-stale) subscriptions
     let updatedSub: Subscription | null = null;
+    let oldSub: Subscription | null = null;
 
     setSubscriptions(subs => {
       const currentSub = subs.find(s => s.id === id);
       if (!currentSub) return subs;
+      oldSub = currentSub;
 
       const updated: Subscription = { ...currentSub, status, ...extraData };
       if (status === SubscriptionStatus.PENDING_PAYMENT && !currentSub.approvedOn) {
@@ -275,6 +335,8 @@ export default function App() {
           return match ? Math.max(max, parseInt(match[1], 10)) : max;
         }, 0);
         updated.renewalNo = `REN-${(maxRenNo + 1).toString().padStart(4, '0')}`;
+        // Ensure status date is captured
+        updated.approvedOn = updated.approvedOn || new Date().toISOString();
       }
       updatedSub = updated;
       return subs.map(s => s.id === id ? updated : s);
@@ -284,10 +346,37 @@ export default function App() {
 
     // Sync to Google Sheet
     await new Promise(resolve => setTimeout(resolve, 50));
-    if (updatedSub) {
+    if (updatedSub && oldSub) {
+      // 1. If moving from PAID to ACTIVE, first time activation -> Log to Billing Details Sheet
+      if (status === SubscriptionStatus.ACTIVE && oldSub.status === SubscriptionStatus.PAID) {
+        addToBillingSheet(updatedSub);
+      }
+
+      // 2. If specifically moving to a NEW audit step (from UI/AccountAuditView), logic depends on if we have a row index
+      if ((extraData as any).auditRowIndex) {
+        // UPDATE existing audit record
+        await updateAuditLogSheetEntry(
+          (extraData as any).auditRowIndex,
+          (extraData as any).prevStage,
+          (extraData as any).auditStatus,
+          extraData.auditRemarks || "",
+          extraData.step || "",
+          (extraData as any).auditPlannedDate
+        );
+      } else if (extraData?.step && extraData.step !== oldSub.step) {
+        // NEW audit record (first time entering audit)
+        await addToAuditLogSheet(updatedSub);
+      }
+      
+      // 3. Special case for audit remarks update (without step change)
+      if (extraData?.auditRemarks && !extraData.step && !(extraData as any).auditRowIndex) {
+        await addToAuditLogSheet(updatedSub);
+      }
+
       const success = await updateSubscriptionInSheet(updatedSub);
       if (success) {
         console.log("Status update synced with Google Sheets:", (updatedSub as Subscription).subscriptionNo, "→", status);
+        // Auto-sync is now OFF
       }
     }
   };
@@ -303,6 +392,7 @@ export default function App() {
       const success = await deleteSubscriptionFromSheet(subToDelete.subscriptionNo);
       if (success) {
         console.log("Deletion synced with Google Sheets");
+        // Auto-sync is now OFF
       }
     }
   };
@@ -345,6 +435,7 @@ export default function App() {
     payments: subscriptions.filter(s => s.status === SubscriptionStatus.PENDING_PAYMENT).length,
     postCopy: subscriptions.filter(s => s.status === SubscriptionStatus.PAID).length,
     active: subscriptions.filter(s => s.status === SubscriptionStatus.ACTIVE).length,
+    audit: subscriptions.filter(s => s.status === SubscriptionStatus.ACTIVE && (s.step === 'Audit' || s.step === 'Re-Audit' || s.step === 'Tally Entry' || !s.step)).length,
     totalValue: subscriptions.reduce((acc, s) => acc + s.price, 0),
     renewalValue: subscriptions.filter(s => s.status === SubscriptionStatus.ACTIVE && isExpiringSoon(s.endDate)).reduce((acc, s) => acc + s.price, 0),
   }), [subscriptions]);
@@ -417,25 +508,75 @@ export default function App() {
   }, [subscriptions, activeTab, searchQuery, sortConfig]);
 
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
   if (!currentUser) {
     return <LoginView onLogin={handleLogin} users={users} />;
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-[var(--color-content-bg)]">
+    <div className="flex h-screen overflow-hidden bg-[var(--color-content-bg)] relative">
+      {/* Mobile Header */}
+      <div className="md:hidden fixed top-0 left-0 right-0 h-16 bg-white border-b border-indigo-100 flex items-center justify-between px-4 z-40">
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center shadow-md">
+            <LayoutGrid className="text-white w-5 h-5" />
+          </div>
+          <h1 className="text-sm font-bold text-indigo-900 leading-tight">Subscription <span className="text-indigo-500">Manager</span></h1>
+        </div>
+        <div className="flex items-center gap-2">
+          <button 
+            onClick={() => handleFetchFromSheet(true)}
+            disabled={isSyncing}
+            className="p-2 text-zinc-400 hover:text-indigo-600 transition-colors"
+          >
+            <RotateCcw className={`w-5 h-5 ${isSyncing ? 'animate-spin' : ''}`} />
+          </button>
+          <button 
+            onClick={() => setIsMobileSidebarOpen(true)}
+            className="p-2 text-zinc-600 hover:text-indigo-600 transition-colors"
+          >
+            <MoreHorizontal className="w-6 h-6" />
+          </button>
+        </div>
+      </div>
+
+      {/* Mobile Sidebar Overlay */}
+      <AnimatePresence>
+        {isMobileSidebarOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setIsMobileSidebarOpen(false)}
+            className="md:hidden fixed inset-0 bg-zinc-900/60 backdrop-blur-sm z-[50]"
+          />
+        )}
+      </AnimatePresence>
+
       {/* Sidebar */}
       <motion.aside
         initial={false}
-        animate={{ width: isSidebarCollapsed ? 80 : 256 }}
-        className="bg-white border-r border-indigo-100 flex flex-col shrink-0 relative transition-all duration-300 ease-in-out"
+        animate={{ 
+          width: isSidebarCollapsed ? 80 : 256,
+          x: (window.innerWidth < 768 && !isMobileSidebarOpen) ? -256 : 0
+        }}
+        className={`fixed md:relative bg-white border-r border-indigo-100 flex flex-col shrink-0 z-[60] transition-all duration-300 ease-in-out h-full ${isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}
       >
-        {/* Toggle Button */}
+        {/* Toggle Button (Desktop Only) */}
         <button
           onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-          className="absolute -right-3 top-20 bg-white border border-indigo-100 rounded-full p-1 shadow-md hover:text-indigo-600 transition-all z-10"
+          className="hidden md:flex absolute -right-3 top-20 bg-white border border-indigo-100 rounded-full p-1 shadow-md hover:text-indigo-600 transition-all z-10"
         >
           {isSidebarCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
+        </button>
+
+        {/* Close Button (Mobile Only) */}
+        <button 
+          onClick={() => setIsMobileSidebarOpen(false)}
+          className="md:hidden absolute top-4 right-4 p-2 text-zinc-400 hover:text-rose-500 transition-colors"
+        >
+          <XCircle className="w-6 h-6" />
         </button>
 
         <div className={`p-6 flex items-center ${isSidebarCollapsed ? 'justify-center px-2' : 'gap-3'}`}>
@@ -456,7 +597,7 @@ export default function App() {
             <button
               onClick={() => handleFetchFromSheet(true)}
               disabled={isSyncing}
-              className="ml-auto p-1.5 text-zinc-400 hover:text-indigo-600 transition-colors"
+              className="ml-auto p-1.5 text-zinc-400 hover:text-indigo-600 transition-colors hidden md:block"
               title="Sync Data"
             >
               <RotateCcw className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} />
@@ -465,7 +606,7 @@ export default function App() {
         </div>
 
         {isSidebarCollapsed && (
-          <div className="px-4 py-2 flex justify-center border-b border-indigo-50 mb-2">
+          <div className="px-4 py-2 hidden md:flex justify-center border-b border-indigo-50 mb-2">
             <button
               onClick={() => handleFetchFromSheet(true)}
               disabled={isSyncing}
@@ -483,10 +624,18 @@ export default function App() {
               icon={<Home className="w-5 h-5" />}
               label="Dashboard"
               active={activeTab === 'dashboard'}
-              onClick={() => setActiveTab('dashboard')}
+              onClick={() => { setActiveTab('dashboard'); setIsMobileSidebarOpen(false); }}
               isCollapsed={isSidebarCollapsed}
             />
           )}
+
+          <SidebarItem
+            icon={<ClipboardList className="w-5 h-5" />}
+            label="My Subscriptions"
+            active={activeTab === 'my-subscriptions'}
+            onClick={() => { setActiveTab('my-subscriptions'); setIsMobileSidebarOpen(false); }}
+            isCollapsed={isSidebarCollapsed}
+          />
 
           <SidebarItem
             icon={<PlusSquare className="w-5 h-5" />}
@@ -495,15 +644,8 @@ export default function App() {
             onClick={() => {
               setRenewalSubscription(null);
               setActiveTab('new');
+              setIsMobileSidebarOpen(false);
             }}
-            isCollapsed={isSidebarCollapsed}
-          />
-
-          <SidebarItem
-            icon={<ClipboardList className="w-5 h-5" />}
-            label="My Subscriptions"
-            active={activeTab === 'my-subscriptions'}
-            onClick={() => setActiveTab('my-subscriptions')}
             isCollapsed={isSidebarCollapsed}
           />
 
@@ -512,7 +654,7 @@ export default function App() {
             label="Pending Approval"
             count={currentUser.role === UserRole.ADMIN ? counts.pendingApproval : undefined}
             active={activeTab === 'pending-approval'}
-            onClick={() => setActiveTab('pending-approval')}
+            onClick={() => { setActiveTab('pending-approval'); setIsMobileSidebarOpen(false); }}
             isCollapsed={isSidebarCollapsed}
             hidden={currentUser.role !== UserRole.ADMIN}
           />
@@ -521,7 +663,7 @@ export default function App() {
             label="Payments"
             count={counts.payments}
             active={activeTab === 'payments'}
-            onClick={() => setActiveTab('payments')}
+            onClick={() => { setActiveTab('payments'); setIsMobileSidebarOpen(false); }}
             isCollapsed={isSidebarCollapsed}
           />
           <SidebarItem
@@ -529,9 +671,19 @@ export default function App() {
             label="Billing Details"
             count={counts.postCopy}
             active={activeTab === 'billing-details'}
-            onClick={() => setActiveTab('billing-details')}
+            onClick={() => { setActiveTab('billing-details'); setIsMobileSidebarOpen(false); }}
             isCollapsed={isSidebarCollapsed}
           />
+          {currentUser.role === UserRole.ADMIN && (
+            <SidebarItem
+              icon={<ShieldCheck className="w-5 h-5" />}
+              label="Account Audit"
+              count={counts.audit}
+              active={activeTab === 'account-audit'}
+              onClick={() => { setActiveTab('account-audit'); setIsMobileSidebarOpen(false); }}
+              isCollapsed={isSidebarCollapsed}
+            />
+          )}
 
           <SidebarItem
             icon={<RotateCcw className="w-5 h-5" />}
@@ -541,6 +693,7 @@ export default function App() {
             onClick={() => {
               setRenewalSubscription(null);
               setActiveTab('renewals');
+              setIsMobileSidebarOpen(false);
             }}
             isCollapsed={isSidebarCollapsed}
           />
@@ -550,7 +703,7 @@ export default function App() {
               icon={<UserManagementIcon className="w-5 h-5" />}
               label="User Management"
               active={activeTab === 'user-management'}
-              onClick={() => setActiveTab('user-management')}
+              onClick={() => { setActiveTab('user-management'); setIsMobileSidebarOpen(false); }}
               isCollapsed={isSidebarCollapsed}
             />
           )}
@@ -589,7 +742,7 @@ export default function App() {
       </motion.aside>
 
       {/* Main Content */}
-      <main className="flex-1 overflow-y-auto p-8 custom-scrollbar">
+      <main className="flex-1 overflow-y-auto p-4 md:p-8 custom-scrollbar mt-16 md:mt-0">
         {/* Renewal Reminder Banner */}
         {counts.renewals > 0 && (
           <motion.div
@@ -680,37 +833,23 @@ export default function App() {
               subscriptions={subscriptions}
               updateStatus={updateStatus}
               userRole={currentUser.role}
-              onNavigateToNew={(sub) => {
-                if (sub) {
-                  let subWithRen = { ...sub };
+        onNavigateToNew={(sub) => {
+          if (sub) {
+            let subWithRen = { ...sub };
 
-                  // Generate REN number if missing
-                  if (!subWithRen.renewalNo) {
-                    const maxRenNo = subscriptions.reduce((max, s) => {
-                      const match = s.renewalNo && typeof s.renewalNo === 'string' ? s.renewalNo.match(/REN-(\d+)/) : null;
-                      return match ? Math.max(max, parseInt(match[1], 10)) : max;
-                    }, 0);
-                    subWithRen.renewalNo = `REN-${(maxRenNo + 1).toString().padStart(4, '0')}`;
-                  }
+            // Backward-compatibility fix for vendor name mapping
+            if (!subWithRen.subscriptionType && subWithRen.subscriptionName) {
+              subWithRen = {
+                ...subWithRen,
+                subscriptionType: subWithRen.subscriptionName,
+                subscriptionName: '',
+              };
+            }
 
-                  // Backward-compatibility fix:
-                  // Old subscriptions (before form-binding fix) stored the vendor name in
-                  // subscriptionName and left subscriptionType empty.
-                  // New model: subscriptionName = dropdown selection, subscriptionType = vendor name text.
-                  // So if subscriptionType is empty, move subscriptionName → subscriptionType (vendor name)
-                  // and clear subscriptionName so the user can pick the correct dropdown option.
-                  if (!subWithRen.subscriptionType && subWithRen.subscriptionName) {
-                    subWithRen = {
-                      ...subWithRen,
-                      subscriptionType: subWithRen.subscriptionName, // vendor name
-                      subscriptionName: '',                           // let user re-select from dropdown
-                    };
-                  }
-
-                  setRenewalSubscription(subWithRen);
-                }
-                setActiveTab('new');
-              }}
+            setRenewalSubscription(subWithRen);
+          }
+          setActiveTab('new');
+        }}
             />
           )}
 
@@ -732,6 +871,15 @@ export default function App() {
             />
           )}
 
+          {activeTab === 'account-audit' && currentUser.role === UserRole.ADMIN && (
+            <AccountAuditView 
+              subscriptions={subscriptions} 
+              auditLogData={auditLogData}
+              updateStatus={updateStatus}
+              isSyncing={isSyncing}
+              onRefresh={() => handleFetchFromSheet(true)}
+            />
+          )}
 
 
           {activeTab === 'user-management' && currentUser.role === UserRole.ADMIN && (

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { CreditCard, MoreHorizontal, Search, ArrowUpDown, Link, X, ExternalLink, Image as ImageIcon, Upload, CheckSquare, Square, CheckCircle2, ChevronDown } from 'lucide-react';
+import { CreditCard, MoreHorizontal, Search, ArrowUpDown, Link, X, ExternalLink, Image as ImageIcon, Upload, CheckSquare, Square, CheckCircle2, ChevronDown, Clock } from 'lucide-react';
 import { Subscription, SubscriptionStatus } from '../types';
 
 interface PaymentsViewProps {
@@ -156,17 +156,17 @@ export const PaymentsView: React.FC<PaymentsViewProps> = ({
 
 
       {/* Standardized Header */}
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
         <div className="flex items-center gap-4">
           <div className="w-12 h-12 bg-indigo-50 rounded-xl flex items-center justify-center border border-indigo-100 shadow-sm">
             <CreditCard className="text-indigo-600 w-7 h-7" />
           </div>
           <div>
-            <h2 className="text-2xl font-bold text-indigo-900 tracking-tight">Payments</h2>
-            <p className="text-zinc-500 text-sm font-medium">Manage and process payments for approved subscriptions</p>
+            <h2 className="text-xl md:text-2xl font-bold text-indigo-900 tracking-tight">Payments</h2>
+            <p className="text-zinc-500 text-xs md:text-sm font-medium">Manage and process payments for approved subscriptions</p>
           </div>
         </div>
-        <button className="w-11 h-11 bg-white rounded-xl flex items-center justify-center border border-indigo-50 shadow-sm text-zinc-400 hover:text-indigo-600 transition-colors">
+        <button className="hidden sm:flex w-11 h-11 bg-white rounded-xl items-center justify-center border border-indigo-50 shadow-sm text-zinc-400 hover:text-indigo-600 transition-colors">
           <MoreHorizontal className="w-6 h-6" />
         </button>
       </div>
@@ -178,27 +178,27 @@ export const PaymentsView: React.FC<PaymentsViewProps> = ({
             initial={{ opacity: 0, scale: 0.95, y: -10 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: -10 }}
-            className="mb-6 p-1 bg-gradient-to-r from-indigo-600 to-indigo-500 rounded-3xl shadow-2xl shadow-indigo-100"
+            className="mb-6 p-1 bg-gradient-to-r from-indigo-600 to-indigo-500 rounded-[24px] md:rounded-3xl shadow-2xl shadow-indigo-100"
           >
-            <div className="bg-white/10 backdrop-blur-md rounded-2xl p-4 flex flex-col md:flex-row items-center gap-4">
-              <div className="flex items-center gap-3 px-2 border-r border-white/20 mr-2">
-                <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-lg shadow-indigo-600/20">
+            <div className="bg-white/10 backdrop-blur-md rounded-[20px] md:rounded-2xl p-4 flex flex-col md:flex-row items-center gap-4">
+              <div className="flex items-center gap-3 px-2 md:border-r border-white/20 md:mr-2 w-full md:w-auto">
+                <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-lg shadow-indigo-600/20 shrink-0">
                   <CheckCircle2 className="w-6 h-6 text-indigo-600" />
                 </div>
                 <div className="text-white">
-                  <p className="text-xs font-bold opacity-80 uppercase tracking-widest">Selected</p>
-                  <p className="font-black text-xl leading-none">{selectedIds.size}</p>
+                  <p className="text-[10px] font-bold opacity-80 uppercase tracking-widest">Selected</p>
+                  <p className="font-black text-lg md:text-xl leading-none">{selectedIds.size}</p>
                 </div>
               </div>
 
-              <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4 w-full">
+              <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4 w-full">
                 <div className="relative group">
-                  <label className="text-[10px] font-black text-white/70 uppercase tracking-wider mb-1 block ml-1">Payment Mode</label>
+                  <label className="text-[9px] font-black text-white/70 uppercase tracking-wider mb-1 block ml-1">Payment Mode</label>
                   <div className="relative">
                     <select
                       value={paymentMode}
                       onChange={(e) => setPaymentMode(e.target.value)}
-                      className="w-full bg-white/20 border border-white/30 rounded-xl px-4 py-2.5 text-sm font-bold text-white focus:ring-2 focus:ring-white outline-none appearance-none transition-all cursor-pointer backdrop-blur-sm"
+                      className="w-full bg-white/20 border border-white/30 rounded-xl px-4 py-2 text-sm font-bold text-white focus:ring-2 focus:ring-white outline-none appearance-none transition-all cursor-pointer backdrop-blur-sm"
                     >
                       <option className="text-zinc-700" value="UPI">UPI</option>
                       <option className="text-zinc-700" value="Net Banking">Net Banking</option>
@@ -211,20 +211,20 @@ export const PaymentsView: React.FC<PaymentsViewProps> = ({
                 </div>
 
                 <div className="relative">
-                  <label className="text-[10px] font-black text-white/70 uppercase tracking-wider mb-1 block ml-1">Transaction ID</label>
+                  <label className="text-[9px] font-black text-white/70 uppercase tracking-wider mb-1 block ml-1">Transaction ID</label>
                   <input
                     type="text"
                     placeholder="e.g. TSI-0001"
                     value={transactionId}
                     onChange={(e) => setTransactionId(e.target.value)}
-                    className="w-full bg-white/20 border border-white/30 rounded-xl px-4 py-2.5 text-sm font-bold text-white placeholder:text-white/40 focus:ring-2 focus:ring-white outline-none transition-all backdrop-blur-sm"
+                    className="w-full bg-white/20 border border-white/30 rounded-xl px-4 py-2 text-sm font-bold text-white placeholder:text-white/40 focus:ring-2 focus:ring-white outline-none transition-all backdrop-blur-sm"
                   />
                 </div>
               </div>
 
               <button
                 onClick={handleBatchSubmit}
-                className="bg-white text-indigo-600 px-8 py-4 rounded-2xl font-black text-sm hover:bg-indigo-50 transition-all active:scale-95 flex items-center gap-2 shadow-2xl shadow-indigo-900/20 whitespace-nowrap min-w-[160px] justify-center"
+                className="w-full md:w-auto bg-white text-indigo-600 px-8 py-3.5 rounded-xl md:rounded-2xl font-black text-sm hover:bg-indigo-50 transition-all active:scale-95 flex items-center gap-2 shadow-xl shadow-indigo-900/20 whitespace-nowrap justify-center"
               >
                 Submit Payment
               </button>
@@ -233,18 +233,18 @@ export const PaymentsView: React.FC<PaymentsViewProps> = ({
         )}
       </AnimatePresence>
 
-      <div className="card">
-        <div className="flex border-b border-indigo-50">
+      <div className="card overflow-hidden">
+        <div className="flex border-b border-indigo-50 overflow-x-auto custom-scrollbar">
           <button
             onClick={() => { setView('pending'); setSelectedIds(new Set()); }}
-            className={`flex-1 py-3 text-sm font-bold transition-all ${view === 'pending' ? 'text-indigo-600 border-b-2 border-indigo-600 bg-indigo-50/30' : 'text-zinc-400 hover:text-zinc-600'}`}
+            className={`flex-1 py-3 px-4 text-xs md:text-sm font-bold transition-all min-w-[100px] ${view === 'pending' ? 'text-indigo-600 border-b-2 border-indigo-600 bg-indigo-50/30' : 'text-zinc-400 hover:text-zinc-600'}`}
           >
             Pending
           </button>
 
           <button
             onClick={() => { setView('history'); setSelectedIds(new Set()); }}
-            className={`flex-1 py-3 text-sm font-bold transition-all ${view === 'history' ? 'text-indigo-600 border-b-2 border-indigo-600 bg-indigo-50/30' : 'text-zinc-400 hover:text-zinc-600'}`}
+            className={`flex-1 py-3 px-4 text-xs md:text-sm font-bold transition-all min-w-[100px] ${view === 'history' ? 'text-indigo-600 border-b-2 border-indigo-600 bg-indigo-50/30' : 'text-zinc-400 hover:text-zinc-600'}`}
           >
             History
           </button>
@@ -263,7 +263,8 @@ export const PaymentsView: React.FC<PaymentsViewProps> = ({
           </div>
         </div>
 
-        <div className="overflow-x-auto">
+        {/* Desktop Table View */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-zinc-50/50 border-b border-indigo-50">
@@ -275,6 +276,7 @@ export const PaymentsView: React.FC<PaymentsViewProps> = ({
                     <th className="table-header text-center whitespace-nowrap">Timestamp</th>
                     <th className="table-header text-center whitespace-nowrap">Planned Date</th>
                     <th className="table-header text-center whitespace-nowrap">Subscription No</th>
+                    <th className="table-header text-center whitespace-nowrap">Renewal ID</th>
                     <th className="table-header text-center whitespace-nowrap">Renewal No</th>
                     <th className="table-header whitespace-nowrap">Company</th>
                     <th className="table-header whitespace-nowrap">Name of the Person</th>
@@ -287,6 +289,7 @@ export const PaymentsView: React.FC<PaymentsViewProps> = ({
                   <>
                     <th className="table-header py-4 px-4 whitespace-nowrap flex items-center gap-1">Payment Date <ArrowUpDown className="w-3 h-3" /></th>
                     <th className="table-header py-4 px-4 whitespace-nowrap text-center">Subscription No</th>
+                    <th className="table-header py-4 px-4 whitespace-nowrap text-center">Renewal ID</th>
                     <th className="table-header py-4 px-4 whitespace-nowrap text-center">Renewal No</th>
                     <th className="table-header py-4 px-4 whitespace-nowrap">Company</th>
                     <th className="table-header py-4 px-4 whitespace-nowrap">Name of the Person</th>
@@ -302,88 +305,186 @@ export const PaymentsView: React.FC<PaymentsViewProps> = ({
               </tr>
             </thead>
             <tbody className="divide-y divide-indigo-50/50">
-              {filteredSubs.length === 0 ? (
-                <tr>
-                  <td colSpan={12} className="py-24 text-center text-zinc-300 font-medium italic">
-                    {view === 'pending' ? 'No pending payments found' : 'No active subscriptions found'}
-                  </td>
+              {filteredSubs.length > 0 && filteredSubs.map(sub => (
+                <tr key={sub.id} className="hover:bg-indigo-50/20 transition-colors group">
+                  {view === 'pending' ? (
+                    <>
+                      <td className="table-cell py-4 px-4 align-middle text-center">
+                        <div className="flex items-center justify-center gap-3">
+                          <button
+                            onClick={() => toggleSelection(sub.id)}
+                            className={`p-2 rounded-xl border-2 transition-all active:scale-90 ${selectedIds.has(sub.id)
+                                ? 'bg-indigo-600 border-indigo-600 text-white shadow-lg shadow-indigo-100'
+                                : 'bg-white border-zinc-200 text-zinc-400 hover:border-indigo-400 hover:text-indigo-400'
+                              }`}
+                            title="Select to mark as done"
+                          >
+                            {selectedIds.has(sub.id) ? <CheckSquare className="w-5 h-5" /> : <Square className="w-5 h-5" />}
+                          </button>
+                          <button
+                            onClick={() => openPaymentModal(sub)}
+                            className="bg-emerald-50 text-emerald-600 border border-emerald-100 px-3 py-1.5 rounded-lg hover:bg-emerald-100 transition-all active:scale-95 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider"
+                            title="Payment Link"
+                          >
+                            <Link className="w-3.5 h-3.5" />
+                            <span>Link</span>
+                          </button>
+                        </div>
+                      </td>
+                      <td className="table-cell py-4 px-4 align-middle text-zinc-500 text-[10px] font-medium text-center">
+                        {(() => {
+                          const date = new Date(sub.createdAt);
+                          return isNaN(date.getTime())
+                            ? sub.createdAt
+                            : date.toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true });
+                        })()}
+                      </td>
+                      <td className="table-cell py-4 px-4 align-middle text-zinc-500 text-[10px] font-medium text-center">
+                        {(() => {
+                          if (!sub.planned2) return '-';
+                          const date = new Date(sub.planned2);
+                          return isNaN(date.getTime())
+                            ? sub.planned2
+                            : date.toLocaleString('en-GB', { 
+                                day: 'numeric', 
+                                month: 'short', 
+                                year: 'numeric', 
+                                hour: '2-digit', 
+                                minute: '2-digit', 
+                                second: '2-digit',
+                                hour12: true 
+                              });
+                        })()}
+                      </td>
+                      <td className="table-cell py-4 px-4 align-middle font-mono text-xs text-zinc-500 text-center">{sub.subscriptionNo}</td>
+                      <td className="table-cell py-4 px-4 align-middle font-mono text-xs text-zinc-400 font-medium text-center">{sub.renewalNo || '-'}</td>
+                      <td className="table-cell py-4 px-4 align-middle font-mono text-xs text-zinc-400 font-medium text-center">{sub.renewalCount || '-'}</td>
+                      <td className="table-cell py-4 px-4 align-middle text-zinc-600 font-bold">{sub.companyName}</td>
+                      <td className="table-cell py-4 px-4 align-middle text-zinc-600">{sub.subscriberName}</td>
+                      <td className="table-cell py-4 px-4 align-middle text-zinc-500 text-xs">{sub.category}</td>
+                      <td className="table-cell py-4 px-4 align-middle text-indigo-600 font-bold">{sub.subscriptionName || '-'}</td>
+                      <td className="table-cell py-4 px-4 align-middle text-indigo-900 text-xs font-bold">{sub.subscriptionType || '-'}</td>
+                      <td className="table-cell py-4 px-4 align-middle font-black text-emerald-600 text-center whitespace-nowrap">₹{sub.price.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                    </>
+                  ) : (
+                    <>
+                      <td className="table-cell py-4 px-4 align-middle text-zinc-600 font-medium whitespace-nowrap">
+                        {(() => {
+                          if (!sub.planned2) return sub.approvedOn || (sub.startDate && new Date(sub.startDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })) || '-';
+                          const date = new Date(sub.planned2);
+                          return isNaN(date.getTime())
+                            ? sub.planned2
+                            : date.toLocaleString('en-GB', { 
+                                day: 'numeric', 
+                                month: 'short', 
+                                year: 'numeric', 
+                                hour: '2-digit', 
+                                minute: '2-digit', 
+                                hour12: true 
+                              });
+                        })()}
+                      </td>
+                      <td className="table-cell py-4 px-4 align-middle font-mono text-zinc-500 font-bold text-center">{sub.subscriptionNo}</td>
+                      <td className="table-cell py-4 px-4 align-middle font-mono text-xs text-zinc-400 font-medium text-center">{sub.renewalNo || '-'}</td>
+                      <td className="table-cell py-4 px-4 align-middle font-mono text-xs text-zinc-400 font-medium text-center">{sub.renewalCount || '-'}</td>
+                      <td className="table-cell py-4 px-4 align-middle text-zinc-600 font-bold">{sub.companyName}</td>
+                      <td className="table-cell py-4 px-4 align-middle text-zinc-600">{sub.subscriberName}</td>
+                      <td className="table-cell py-4 px-4 align-middle text-zinc-500 text-xs">{sub.category}</td>
+                      <td className="table-cell py-4 px-4 align-middle text-indigo-600 font-bold">{sub.subscriptionName || '-'}</td>
+                      <td className="table-cell py-4 px-4 align-middle text-indigo-900 text-xs font-bold">{sub.subscriptionType || '-'}</td>
+                      <td className="table-cell py-4 px-4 align-middle font-black text-emerald-600 text-center">₹{sub.price.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                      <td className="table-cell py-4 px-4 align-middle text-center">
+                        <span className="bg-indigo-50 text-indigo-700 px-3 py-1 rounded-lg text-xs font-bold border border-indigo-100 whitespace-nowrap">
+                          {sub.paymentMode || 'UPI'}
+                        </span>
+                      </td>
+                      <td className="table-cell py-4 px-4 align-middle text-zinc-500 font-mono text-xs text-center">{sub.transactionId || 'TSI-' + sub.subscriptionNo.split('-')[1]}</td>
+                      <td className="table-cell py-4 px-4 align-middle text-zinc-600 font-medium text-center whitespace-nowrap">
+                        {sub.startDate ? new Date(sub.startDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '-'}
+                      </td>
+                    </>
+                  )}
                 </tr>
-              ) : (
-                filteredSubs.map(sub => (
-                  <tr key={sub.id} className="hover:bg-indigo-50/20 transition-colors group">
-                    {view === 'pending' ? (
-                      <>
-                        <td className="table-cell py-4 px-4 align-middle text-center">
-                          <div className="flex items-center justify-center gap-3">
-                            <button
-                              onClick={() => toggleSelection(sub.id)}
-                              className={`p-2 rounded-xl border-2 transition-all active:scale-90 ${selectedIds.has(sub.id)
-                                  ? 'bg-indigo-600 border-indigo-600 text-white shadow-lg shadow-indigo-100'
-                                  : 'bg-white border-zinc-200 text-zinc-400 hover:border-indigo-400 hover:text-indigo-400'
-                                }`}
-                              title="Select to mark as done"
-                            >
-                              {selectedIds.has(sub.id) ? <CheckSquare className="w-5 h-5" /> : <Square className="w-5 h-5" />}
-                            </button>
-                            <button
-                              onClick={() => openPaymentModal(sub)}
-                              className="bg-emerald-50 text-emerald-600 border border-emerald-100 px-3 py-1.5 rounded-lg hover:bg-emerald-100 transition-all active:scale-95 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider"
-                              title="Payment Link"
-                            >
-                              <Link className="w-3.5 h-3.5" />
-                              <span>Link</span>
-                            </button>
-                          </div>
-                        </td>
-                        <td className="table-cell py-4 px-4 align-middle text-zinc-500 text-[10px] font-medium text-center">
-                          {(() => {
-                            const date = new Date(sub.createdAt);
-                            return isNaN(date.getTime())
-                              ? sub.createdAt
-                              : date.toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true });
-                          })()}
-                        </td>
-                        <td className="table-cell py-4 px-4 align-middle text-zinc-500 text-[10px] font-medium text-center">
-                          {sub.startDate && !isNaN(new Date(sub.startDate).getTime()) ? new Date(sub.startDate).toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '-'}
-                        </td>
-                        <td className="table-cell py-4 px-4 align-middle font-mono text-xs text-zinc-500 text-center">{sub.subscriptionNo}</td>
-                        <td className="table-cell py-4 px-4 align-middle font-mono text-xs text-zinc-400 font-medium text-center">{sub.renewalNo || '-'}</td>
-                        <td className="table-cell py-4 px-4 align-middle text-zinc-600 font-bold">{sub.companyName}</td>
-                        <td className="table-cell py-4 px-4 align-middle text-zinc-600">{sub.subscriberName}</td>
-                        <td className="table-cell py-4 px-4 align-middle text-zinc-500 text-xs">{sub.category}</td>
-                        <td className="table-cell py-4 px-4 align-middle text-indigo-600 font-bold">{sub.subscriptionName || '-'}</td>
-                        <td className="table-cell py-4 px-4 align-middle text-indigo-900 text-xs font-bold">{sub.subscriptionType || '-'}</td>
-                        <td className="table-cell py-4 px-4 align-middle font-black text-emerald-600 text-center whitespace-nowrap">₹{sub.price.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
-                      </>
-                    ) : (
-                      <>
-                        <td className="table-cell py-4 px-4 align-middle text-zinc-600 font-medium whitespace-nowrap">
-                          {sub.approvedOn || (sub.startDate && new Date(sub.startDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })) || '-'}
-                        </td>
-                        <td className="table-cell py-4 px-4 align-middle font-mono text-zinc-500 font-bold text-center">{sub.subscriptionNo}</td>
-                        <td className="table-cell py-4 px-4 align-middle font-mono text-xs text-zinc-400 font-medium text-center">{sub.renewalNo || '-'}</td>
-                        <td className="table-cell py-4 px-4 align-middle text-zinc-600 font-bold">{sub.companyName}</td>
-                        <td className="table-cell py-4 px-4 align-middle text-zinc-600">{sub.subscriberName}</td>
-                        <td className="table-cell py-4 px-4 align-middle text-zinc-500 text-xs">{sub.category}</td>
-                        <td className="table-cell py-4 px-4 align-middle text-indigo-600 font-bold">{sub.subscriptionName || '-'}</td>
-                        <td className="table-cell py-4 px-4 align-middle text-indigo-900 text-xs font-bold">{sub.subscriptionType || '-'}</td>
-                        <td className="table-cell py-4 px-4 align-middle font-black text-emerald-600 text-center">₹{sub.price.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
-                        <td className="table-cell py-4 px-4 align-middle text-center">
-                          <span className="bg-indigo-50 text-indigo-700 px-3 py-1 rounded-lg text-xs font-bold border border-indigo-100 whitespace-nowrap">
-                            {sub.paymentMode || 'UPI'}
-                          </span>
-                        </td>
-                        <td className="table-cell py-4 px-4 align-middle text-zinc-500 font-mono text-xs text-center">{sub.transactionId || 'TSI-' + sub.subscriptionNo.split('-')[1]}</td>
-                        <td className="table-cell py-4 px-4 align-middle text-zinc-600 font-medium text-center whitespace-nowrap">
-                          {sub.startDate ? new Date(sub.startDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '-'}
-                        </td>
-                      </>
-                    )}
-                  </tr>
-                ))
-              )}
+              ))}
             </tbody>
           </table>
+        </div>
+
+        {/* Mobile Card View */}
+        <div className="md:hidden divide-y divide-indigo-50">
+          {filteredSubs.length > 0 ? filteredSubs.map(sub => (
+            <div key={sub.id} className="p-4 space-y-3 bg-white hover:bg-indigo-50/20 transition-colors">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-bold text-indigo-600 font-mono italic">{sub.subscriptionNo}</span>
+                <span className="text-[10px] font-black text-emerald-600">₹{sub.price.toLocaleString()}</span>
+              </div>
+
+              <div>
+                <h4 className="text-sm font-black text-indigo-900 leading-tight">{sub.subscriptionName}</h4>
+                <div className="flex flex-col gap-0.5 mt-1">
+                  <p className="text-[11px] text-zinc-500 font-medium leading-tight">{sub.companyName} • {sub.subscriberName}</p>
+                  {view === 'pending' && sub.planned2 && (
+                    <p className="text-[9px] font-bold text-indigo-500 flex items-center gap-1 mt-0.5">
+                      <Clock className="w-2.5 h-2.5" />
+                      Planned: {(() => {
+                        const date = new Date(sub.planned2);
+                        return isNaN(date.getTime())
+                          ? sub.planned2
+                          : date.toLocaleString('en-GB', { 
+                              day: 'numeric', 
+                              month: 'short', 
+                              hour: '2-digit', 
+                              minute: '2-digit', 
+                              hour12: true 
+                            });
+                      })()}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between pt-2 border-t border-indigo-50/50">
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-bold text-zinc-400">{sub.category}</span>
+                </div>
+                {view === 'pending' && (
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => openPaymentModal(sub)}
+                      className="p-2 bg-emerald-50 text-emerald-600 rounded-lg border border-emerald-100"
+                    >
+                      <Link className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => toggleSelection(sub.id)}
+                      className={`p-2 rounded-lg border-2 transition-all ${selectedIds.has(sub.id) ? 'bg-indigo-600 border-indigo-600 text-white' : 'bg-white border-zinc-200 text-zinc-400'}`}
+                    >
+                      {selectedIds.has(sub.id) ? <CheckSquare className="w-5 h-5" /> : <Square className="w-5 h-5" />}
+                    </button>
+                  </div>
+                )}
+                {view === 'history' && (
+                  <div className="flex flex-col items-end gap-1">
+                    <span className="bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded text-[10px] font-bold border border-indigo-100">
+                      {sub.paymentMode || 'UPI'}
+                    </span>
+                    {sub.planned2 && (
+                      <span className="text-[9px] text-zinc-400 font-medium">
+                        Paid: {(() => {
+                          const date = new Date(sub.planned2);
+                          return isNaN(date.getTime()) ? sub.planned2 : date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+                        })()}
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          )) : (
+            <div className="py-12 text-center text-zinc-300 font-medium italic text-sm">
+              {view === 'pending' ? 'No pending payments found' : 'No active subscriptions found'}
+            </div>
+          )}
         </div>
       </div>
     </motion.div>

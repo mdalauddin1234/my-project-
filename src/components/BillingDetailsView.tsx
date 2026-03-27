@@ -32,7 +32,8 @@ const BillingCard: React.FC<BillingRowProps> = ({ sub, onActivate }) => {
     onActivate(sub.id, SubscriptionStatus.ACTIVE, {
       photoUrl,
       startDate: startDate ? new Date(startDate).toISOString() : undefined,
-      endDate: endDate ? new Date(endDate).toISOString() : undefined
+      endDate: endDate ? new Date(endDate).toISOString() : undefined,
+      step: 'Audit'
     });
   };
 
@@ -40,97 +41,140 @@ const BillingCard: React.FC<BillingRowProps> = ({ sub, onActivate }) => {
     <motion.div 
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="bg-white border border-indigo-100 p-5 rounded-2xl shadow-sm hover:shadow-md transition-all flex flex-col lg:flex-row items-center gap-6"
+      className="bg-white border border-indigo-100 p-6 rounded-3xl shadow-sm hover:shadow-xl hover:shadow-indigo-50/50 transition-all space-y-6"
     >
-      {/* Identity */}
-      <div className="w-full lg:w-48 shrink-0">
-        <div className="flex items-center gap-3 mb-1">
-          <div className="w-8 h-8 bg-indigo-50 rounded-lg flex items-center justify-center">
-            <Receipt className="w-4 h-4 text-indigo-600" />
+      {/* Detail Grid */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-y-6 gap-x-4">
+        <div className="space-y-1">
+          <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest block">Subscription No</label>
+          <div className="flex items-center gap-2">
+            <div className="w-6 h-6 bg-indigo-50 rounded flex items-center justify-center">
+              <Receipt className="w-3.5 h-3.5 text-indigo-600" />
+            </div>
+            <p className="text-sm font-black text-indigo-900">{sub.subscriptionNo}</p>
           </div>
-          <span className="font-black text-indigo-900 text-sm tracking-tight">{sub.subscriptionNo}</span>
         </div>
-        <h4 className="text-sm font-bold text-zinc-700 line-clamp-1">{sub.subscriptionName}</h4>
-        <div className="flex items-center gap-2">
-          <p className="text-[10px] text-zinc-400 font-bold uppercase">{sub.companyName}</p>
-          {sub.renewalNo && (
-            <span className="text-[9px] font-mono text-indigo-400 bg-indigo-50 px-1.5 py-0.5 rounded leading-none">
-              {sub.renewalNo}
-            </span>
-          )}
+
+        <div className="space-y-1">
+          <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest block">Renewal ID</label>
+          <p className="text-sm font-bold text-zinc-800 font-mono italic">{sub.renewalNo || '-'}</p>
         </div>
+
+        <div className="space-y-1">
+          <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest block">Renewal No</label>
+          <p className="text-sm font-bold text-zinc-800 font-mono italic">{sub.renewalCount || '-'}</p>
+        </div>
+
+        <div className="space-y-1">
+          <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest block">Name of the Person</label>
+          <p className="text-sm font-bold text-zinc-800">{sub.subscriberName}</p>
+        </div>
+
+        <div className="space-y-1">
+          <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest block">Company Name</label>
+          <p className="text-sm font-bold text-zinc-800">{sub.companyName}</p>
+        </div>
+
+        <div className="space-y-1">
+          <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest block">Category of subscription</label>
+          <p className="text-sm font-bold text-zinc-800 underline decoration-indigo-200 underline-offset-4">{sub.category}</p>
+        </div>
+
+        <div className="space-y-1">
+          <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest block">Name of Subscription</label>
+          <p className="text-sm font-black text-indigo-600">{sub.subscriptionName}</p>
+        </div>
+
+        <div className="space-y-1">
+          <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest block">Vendor Name</label>
+          <p className="text-sm font-bold text-zinc-800">{sub.subscriptionType || '-'}</p>
+        </div>
+
+        <div className="space-y-1">
+          <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest block">Frequency</label>
+          <p className="text-sm font-bold text-zinc-500">{sub.frequency}</p>
+        </div>
+
+        <div className="space-y-1">
+          <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest block">Price</label>
+          <p className="text-sm font-black text-emerald-600">₹{sub.price.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
+        </div>
+
       </div>
 
-      {/* Dates */}
-      <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4 w-full">
-        <div className="space-y-1">
-          <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider ml-1">Start Date</label>
-          <div className="relative">
+      <div className="h-px bg-indigo-50 w-full" />
+
+      {/* Action Section */}
+      <div className="flex flex-col lg:flex-row items-end lg:items-center gap-6 pt-2">
+        {/* Dates Selection */}
+        <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4 w-full">
+          <div className="space-y-2">
+            <label className="text-[10px] font-black text-indigo-500 uppercase tracking-widest ml-1 block">Set Activation Start Date</label>
             <input
               type="date"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
-              className="w-full px-4 py-3 bg-zinc-50 border border-indigo-50 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+              className="w-full px-5 py-3.5 bg-zinc-50 border border-indigo-100 rounded-2xl text-sm font-bold text-zinc-700 focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all shadow-inner"
             />
           </div>
-        </div>
-        <div className="space-y-1">
-          <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider ml-1">End Date</label>
-          <div className="relative">
+          <div className="space-y-2">
+            <label className="text-[10px] font-black text-indigo-500 uppercase tracking-widest ml-1 block">Set Expiry End Date</label>
             <input
               type="date"
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
-              className="w-full px-4 py-3 bg-zinc-50 border border-indigo-50 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+              className="w-full px-5 py-3.5 bg-zinc-50 border border-indigo-100 rounded-2xl text-sm font-bold text-zinc-700 focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all shadow-inner"
             />
           </div>
         </div>
-      </div>
 
-      {/* Upload & Action */}
-      <div className="w-full lg:w-auto flex items-center gap-4 shrink-0 pt-2 lg:pt-0 border-t lg:border-t-0 border-indigo-50">
-        <div className="relative flex-1 lg:flex-none">
-          <input
-            type="file"
-            accept="image/*"
-            onChange={handleFileChange}
-            className="hidden"
-            id={`upload-${sub.id}`}
-          />
-          <label
-            htmlFor={`upload-${sub.id}`}
-            className={`w-full lg:w-32 h-14 flex items-center justify-center gap-2 bg-zinc-50 border-2 border-dashed border-indigo-100 rounded-xl cursor-pointer hover:bg-indigo-50 transition-all overflow-hidden ${photoUrl ? 'border-emerald-400 bg-emerald-50/30' : ''}`}
-          >
-            {photoUrl ? (
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded border border-emerald-200 overflow-hidden">
-                  <img src={photoUrl} className="w-full h-full object-cover" />
-                </div>
-                <span className="text-[10px] font-bold text-emerald-600 uppercase">Change</span>
+        {/* Upload & Submit */}
+        <div className="w-full lg:w-auto flex items-center gap-4 shrink-0">
+          <div className="relative flex-1 lg:flex-none">
+            <input
+              type="file"
+              accept="image/*,.pdf"
+              onChange={handleFileChange}
+              className="hidden"
+              id={`upload-${sub.id}`}
+            />
+            <label
+              htmlFor={`upload-${sub.id}`}
+              className={`w-full lg:w-44 h-16 flex items-center justify-center gap-3 bg-white border-2 border-dashed rounded-2xl cursor-pointer hover:bg-indigo-50 transition-all overflow-hidden shadow-sm ${photoUrl ? 'border-emerald-500 bg-emerald-50/20' : 'border-indigo-200 hover:border-indigo-400'}`}
+            >
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${photoUrl ? 'bg-emerald-500 text-white' : 'bg-indigo-50 text-indigo-600'}`}>
+                {photoUrl ? (
+                  photoUrl.startsWith('data:application/pdf') ? <FileText className="w-5 h-5" /> : <ImageIcon className="w-5 h-5" />
+                ) : (
+                  <Upload className="w-5 h-5" />
+                )}
               </div>
+              <div className="flex flex-col items-start pr-2">
+                <span className={`text-[10px] font-black uppercase tracking-tight ${photoUrl ? 'text-emerald-700' : 'text-zinc-400'}`}>
+                  {photoUrl ? (photoUrl.startsWith('data:application/pdf') ? 'PDF Ready' : 'Image Ready') : (
+                    <>Upload Bill <span className="text-rose-500 text-xs">*</span></>
+                  )}
+                </span>
+                <span className="text-[8px] font-bold text-zinc-400 lowercase">click to {photoUrl ? 'change' : 'browse'}</span>
+              </div>
+            </label>
+          </div>
+
+          <button
+            disabled={!photoUrl || isUploading}
+            onClick={handleActivate}
+            className="h-16 px-8 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-30 disabled:grayscale text-white rounded-2xl shadow-xl shadow-indigo-200 flex items-center justify-center gap-3 transition-all active:scale-95 flex-1 lg:flex-none"
+          >
+            {isUploading ? (
+              <div className="w-6 h-6 border-3 border-white/30 border-t-white rounded-full animate-spin" />
             ) : (
               <>
-                <Upload className="w-4 h-4 text-indigo-600" />
-                <span className="text-[10px] font-black text-indigo-600 uppercase">Upload Bill</span>
+                <Check className="w-6 h-6" />
+                <span className="text-base font-black tracking-wide">Submit</span>
               </>
             )}
-          </label>
+          </button>
         </div>
-
-        <button
-          disabled={!photoUrl || isUploading}
-          onClick={handleActivate}
-          className="h-14 px-6 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-30 disabled:grayscale text-white rounded-xl shadow-lg shadow-indigo-100 flex items-center justify-center gap-2 transition-all active:scale-95 flex-1 lg:flex-none"
-        >
-          {isUploading ? (
-            <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-          ) : (
-            <>
-              <Check className="w-5 h-5" />
-              <span className="text-sm font-bold">Submit</span>
-            </>
-          )}
-        </button>
       </div>
     </motion.div>
   );
@@ -150,7 +194,10 @@ export const BillingDetailsView: React.FC<BillingDetailsViewProps> = ({
   updateStatus
 }) => {
   const filteredSubs = React.useMemo(() => {
-    let filtered = subscriptions.filter(s => s.status === SubscriptionStatus.PAID);
+    let filtered = subscriptions.filter(s => 
+      s.status === SubscriptionStatus.PAID && 
+      (!s.step || s.step === '' || s.step === '-')
+    );
 
     if (searchQuery) {
       const q = searchQuery.toLowerCase();

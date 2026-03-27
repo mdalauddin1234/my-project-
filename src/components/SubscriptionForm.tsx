@@ -93,9 +93,16 @@ export const SubscriptionForm: React.FC<SubscriptionFormProps> = ({ onSubmit, pe
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    
+    const priceNum = parseFloat(formData.price) || 0;
+    if (priceNum <= 0) {
+      alert("Please enter a valid price greater than 0");
+      return;
+    }
+
     const formattedData = {
       ...formData,
-      price: parseFloat(formData.price) || 0,
+      price: priceNum,
       billingYear: parseInt(formData.billingYear) || new Date().getFullYear(),
     };
 
@@ -121,7 +128,12 @@ export const SubscriptionForm: React.FC<SubscriptionFormProps> = ({ onSubmit, pe
                 </p>
                 {initialData.renewalNo && (
                   <p className="text-sm font-black text-amber-700 flex items-center gap-1.5 border-l border-amber-200 pl-4">
-                    <span className="opacity-60 text-[10px] font-bold">Renewal No:</span> {initialData.renewalNo}
+                    <span className="opacity-60 text-[10px] font-bold">Renewal ID:</span> {initialData.renewalNo}
+                  </p>
+                )}
+                {initialData.renewalCount !== undefined && (
+                  <p className="text-sm font-black text-amber-700 flex items-center gap-1.5 border-l border-amber-200 pl-4">
+                    <span className="opacity-60 text-[10px] font-bold">Renewal No:</span> {initialData.renewalCount}
                   </p>
                 )}
               </div>
@@ -223,9 +235,11 @@ export const SubscriptionForm: React.FC<SubscriptionFormProps> = ({ onSubmit, pe
           <label className="text-xs font-bold text-zinc-500 uppercase ml-1">Price (₹)</label>
           <input
             required
-            type="text"
-            className="w-full bg-zinc-50 border border-indigo-100 rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500 outline-none transition-all font-bold text-emerald-600"
-            placeholder="999"
+            type="number"
+            step="0.01"
+            min="0"
+            className="w-full bg-zinc-50 border border-indigo-100 rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500 outline-none transition-all font-bold text-emerald-600 appearance-none"
+            placeholder="999.00"
             value={formData.price}
             onChange={e => setFormData({ ...formData, price: e.target.value })}
           />

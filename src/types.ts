@@ -60,6 +60,13 @@ export interface Subscription {
   transactionId?: string;
   insuranceDoc?: string;
   renewalNo?: string;
+  renewalCount?: number;
+  planned1?: string;
+  planned2?: string;
+  planned3?: string;
+  actual2?: string;
+  auditStage?: string;
+  auditRemarks?: string;
   step?: string;
   gmailId?: string;
   how?: string;
